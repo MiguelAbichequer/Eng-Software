@@ -1,9 +1,13 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
     <title>Sistema de Monitoria</title>
+
+<link rel="stylesheet" href="{% static 'css/inicio/button.css' %}">
 </head>
 
 <body>
@@ -12,13 +16,11 @@
 
     <p>Selecione uma opção:</p>
 
-    <a href="/alunos/cadastro/">
-        <button>Aluno</button>
-    </a>
-
-    <a href="/monitor/cadastro/">
-        <button>Monitor</button>
-    </a>
+    <div class="text-box">
+        <a class="btn btn-white" href="/alunos/cadastro/">Aluno</a>
+        <a class="btn btn-white" href="/monitor/cadastro/">Monitor</a>
+        <a class="btn btn-white" href="/login/">Login</a>
+    </div>
 
 </body>
 

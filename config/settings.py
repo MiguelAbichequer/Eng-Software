@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'alunos', 
     'monitor',
     'inicio',
+    'login',
 ]
 
 MIDDLEWARE = [
