@@ -18,6 +18,7 @@ class Aluno(models.Model): #representa uma tabela no banco de dados
     
     matricula = models.CharField(max_length=20, unique=True) 
     nome = models.CharField(max_length=100) 
+    senha = models.CharField(max_length=128, blank=True)
     #email
 
     #método chamado quando um print é usado
