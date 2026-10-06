@@ -24,3 +24,23 @@ Ao responder essa pergunta, o cliente vislumbrou um aplicativo simples, contendo
 O cliente retomou alguns problemas já mencionados, propondo algumas soluções. Para evitar horários conflitantes, propôs a criação de um software capaz de gerenciar os horários de atendimento para o monitor, oferecendo aos alunos aqueles ainda disponíveis. Aprofundando-se nessa funcionalidade, o cliente exigiu que o monitor possa manipular os horários requisitados, unindo e remarcando atendimentos. De alguma forma, o sistema deve dividir os intervalos de aula, garantindo o maior número de atendimentos possível, segundo as preferências do monitor.
 Afirmou que gostaria de saber antecipadamente o tema a ser abordado na aula de monitoria, informação que para ele deve sempre ser preenchida ao solicitar um atendimento. Além disso, gostaria de saber explicitamente o formato de reunião desejado pelo aluno: online ou presencial.
 Suas necessidades, segundo ele, podem ser supridas com um aplicativo simples, mas que foque no essencial.
+
+## Segunda reunião com o cliente:
+
+Na segunda reunião, discutimos o fluxo de requisição do horário por parte do aluno.
+
+## Primeira pergunta: como deve acontecer a comunicação entre o aluno e o monitor?
+
+O cliente mencionou a necessidade de um canal específico para tal finalidade. Dessa maneira, a comunicação do aluno com o monitor deve estar restrita ao agendamento de monitorias. O cliente ressaltou que isso deve se dar de maneira rápida, direta e impessoal.
+
+## Segunda pergunta: quais informações devem ser compartilhadas previamente com o monitor?
+
+O cliente afirmou que seria de grande serventia para os monitores saber qual será o assunto discutido na reunião e se ele atenderá um grupo ou um indivíduo.
+
+## Terceira pergunta: o monitor deve ser capaz de remover uma solicitação de um aluno?
+
+O cliente considera essa funcionalidade necessária para resguardar a autonomia dos monitores.
+
+## Quarta pergunta: o agendamento deve ser imediato?
+
+O cliente considera importante que o aluno não fique esperando para ser atendido. Logo, sua requisição deve ser prontamente atendida. Se houver qualquer problema com o monitor, a ferramenta de remoção poderá remover o atendimento.
