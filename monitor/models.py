@@ -18,7 +18,7 @@ class Disciplina(models.Model):
 
     def __str__(self):
         return self.nome
-    
+
 class Monitor(models.Model): #representa uma tabela no banco de dados
     
     #matricula é tratada como char pois como inteiro os zeros a esquerda seriam desconsiderados
@@ -40,6 +40,7 @@ class DiasSemana(models.IntegerChoices): # permite criar uma enumeração, relac
     QUINTA  = 3, "Quinta-feira"
     SEXTA   = 4, "Sexta-feira"
     SABADO  = 5, "Sábado"
+    DOMINGO = 6, "Domingo"
 
 class Horario(models.Model):
     monitor = models.ForeignKey(Monitor, on_delete=models.CASCADE, related_name='horarios')
@@ -53,7 +54,7 @@ class Horario(models.Model):
     def clean(self):
         if self.hora_inicio and self.hora_fim and self.hora_fim <= self.hora_inicio:
             raise ValidationError('O horário final deve ser depois do inicial.')
-
+    # não deve haver sobreposição de horários para o mesmo monitor no mesmo dia da semana
     def __str__(self):
         return f"{self.monitor} - {self.get_dia_semana_display()} {self.hora_inicio:%H:%M}-{self.hora_fim:%H:%M}"
 
