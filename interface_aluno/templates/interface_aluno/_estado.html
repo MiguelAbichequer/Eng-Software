@@ -1,0 +1,7 @@
+{% if estado == 'disponivel' %}
+    <span class="estado estado-disponivel"><span class="ponto" aria-hidden="true"></span>Disponível agora</span>
+{% elif estado == 'em_atendimento' %}
+    <span class="estado estado-em_atendimento"><span class="ponto" aria-hidden="true"></span>Em atendimento</span>
+{% else %}
+    <span class="estado estado-indisponivel"><span class="ponto" aria-hidden="true"></span>Indisponível agora</span>
+{% endif %}

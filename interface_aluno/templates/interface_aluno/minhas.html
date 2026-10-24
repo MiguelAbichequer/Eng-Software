@@ -1,0 +1,107 @@
+{% extends 'interface_aluno/base.html' %}
+
+{% block titulo %}{{ monitor.nome }}{% endblock %}
+
+{% block conteudo %}
+
+    <a class="voltar" href="{% url 'painel' %}{% if querystring %}?{{ querystring }}{% endif %}">&larr; Voltar para os monitores</a>
+
+    <h1>{{ monitor.nome }}</h1>
+    <p class="subtitulo">
+        {% for d in monitor.disciplinas.all %}{{ d.nome }}{% if not forloop.last %}, {% endif %}{% empty %}Nenhuma disciplina cadastrada{% endfor %}
+    </p>
+
+    <section class="situacao estado-{{ resumo.estado }}" aria-labelledby="titulo-situacao">
+        <h2 id="titulo-situacao">
+            {% if resumo.estado == 'disponivel' %}Disponível agora
+            {% elif resumo.estado == 'em_atendimento' %}Em atendimento
+            {% else %}Indisponível agora{% endif %}
+        </h2>
+        <p>
+            {% if resumo.estado == 'disponivel' %}
+                Atende até {{ resumo.horario_atual.hora_fim|time:"H:i" }}. Você pode solicitar este horário abaixo.
+            {% elif resumo.estado == 'em_atendimento' %}
+                {% if atual_e_meu %}Você solicitou o horário de agora (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}).{% else %}O horário de agora (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}) já foi solicitado por outra pessoa.{% endif %}
+            {% elif resumo.proxima_vaga %}
+                Próximo horário livre: {{ resumo.proxima_vaga.data|date:"l, d/m" }}, das {{ resumo.proxima_vaga.horario.hora_inicio|time:"H:i" }} às {{ resumo.proxima_vaga.horario.hora_fim|time:"H:i" }}.
+            {% else %}
+                Este monitor não tem horários livres no momento.
+            {% endif %}
+        </p>
+    </section>
+
+    {% if minhas %}
+        <section class="minhas" aria-labelledby="titulo-minhas">
+            <h2 id="titulo-minhas">Suas solicitações com este monitor</h2>
+            <p class="minhas-link"><a href="{% url 'minhas_solicitacoes' %}">Ver ou cancelar em Minhas solicitações</a></p>
+            <ul>
+                {% for s in minhas %}
+                    <li>
+                        <strong>{{ s.data|date:"l, d/m" }}</strong>, {{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}
+                        <span class="minhas-detalhe">{{ s.assunto }} &middot; {{ s.get_formato_display }} &middot; {{ s.get_participantes_display }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <section aria-labelledby="titulo-horarios">
+        <h2 id="titulo-horarios">Horários disponíveis</h2>
+
+        {% if vagas %}
+
+            {% regroup vagas by data as dias %}
+
+            {% for dia in dias %}
+                <div class="dia">
+                    <h3>{{ dia.grouper|date:"l, d/m" }}</h3>
+
+                    {% for vaga in dia.list %}
+                        <details class="vaga">
+                            <summary>
+                                <span class="vaga-hora">{{ vaga.horario.hora_inicio|time:"H:i" }} às {{ vaga.horario.hora_fim|time:"H:i" }}</span>
+                                <span class="botao botao-secundario">
+                                    <span class="rotulo-abrir">Solicitar</span>
+                                    <span class="rotulo-fechar">Fechar</span>
+                                </span>
+                            </summary>
+
+                            <form method="post" action="{% url 'solicitar_horario' vaga.horario.id %}" class="solicitacao">
+                                {% csrf_token %}
+                                <input type="hidden" name="data" value="{{ vaga.data|date:'Y-m-d' }}">
+
+                                <label class="campo">
+                                    <span>Assunto da monitoria</span>
+                                    <input type="text" name="assunto" maxlength="200" required placeholder="Ex.: integrais por partes, lista 3">
+                                </label>
+
+                                <fieldset>
+                                    <legend>Formato</legend>
+                                    {% for valor, rotulo in formatos %}
+                                        <label class="opcao"><input type="radio" name="formato" value="{{ valor }}" required> {{ rotulo }}</label>
+                                    {% endfor %}
+                                </fieldset>
+
+                                <fieldset>
+                                    <legend>Participantes</legend>
+                                    {% for valor, rotulo in participantes %}
+                                        <label class="opcao"><input type="radio" name="participantes" value="{{ valor }}" required> {{ rotulo }}</label>
+                                    {% endfor %}
+                                </fieldset>
+
+                                <button type="submit" class="botao">Confirmar solicitação</button>
+                            </form>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+        {% else %} 
+            <div class="vazio">
+                <p>Este monitor não tem horários livres nas próximas semanas.</p>
+                <p><a href="{% url 'painel' %}{% if querystring %}?{{ querystring }}{% endif %}">Voltar</a> e escolha outro monitor.</p>
+            </div>
+        {% endif %}
+    </section>
+
+{% endblock %}
