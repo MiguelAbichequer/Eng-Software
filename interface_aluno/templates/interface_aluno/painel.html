@@ -1,0 +1,92 @@
+{% extends 'interface_aluno/base.html' %}
+
+{% block titulo %}Monitores{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Monitores</h1>
+    <p class="subtitulo">Escolha um monitor para ver os horários livres e solicitar um atendimento.</p>
+
+    <form method="get" class="filtros">
+        <div class="campo">
+            <label for="filtro-nome">Nome do monitor</label>
+            <input type="search" id="filtro-nome" name="nome" value="{{ filtros.nome }}" placeholder="Buscar por nome">
+        </div>
+
+        <div class="campo">
+            <label for="filtro-disciplina">Disciplina</label>
+            <select id="filtro-disciplina" name="disciplina">
+                <option value="">Todas</option>
+                {% for disciplina in disciplinas %}
+                    <option value="{{ disciplina.id }}" {% if filtros.disciplina == disciplina.id|stringformat:"s" %}selected{% endif %}>{{ disciplina.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo">
+            <label for="filtro-disponibilidade">Disponibilidade</label>
+            <select id="filtro-disponibilidade" name="disponibilidade">
+                <option value="">Qualquer</option>
+                <option value="agora" {% if filtros.disponibilidade == 'agora' %}selected{% endif %}>Disponível agora</option>
+                <option value="livres" {% if filtros.disponibilidade == 'livres' %}selected{% endif %}>Com horários livres</option>
+            </select>
+        </div>
+
+        <div class="filtros-acoes">
+            <button type="submit" class="botao">Filtrar</button>
+            {% if filtrando %}
+                <a href="{% url 'painel' %}" class="link-limpar">Limpar filtros</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if resumos %}
+
+        <p class="contagem">{{ resumos|length }} monitor{{ resumos|length|pluralize:"es" }}</p>
+
+        <ul class="monitores">
+            {% for r in resumos %}
+                <li>
+                    <a class="monitor-linha estado-{{ r.estado }}"
+                       href="{% url 'monitor_detalhe' r.monitor.id %}{% if querystring %}?{{ querystring }}{% endif %}">
+
+                        <span class="monitor-info">
+                            <span class="monitor-nome">{{ r.monitor.nome }}</span>
+                            <span class="monitor-disciplinas">
+                                {% for d in r.monitor.disciplinas.all %}{{ d.nome }}{% if not forloop.last %}, {% endif %}{% empty %}Nenhuma disciplina cadastrada{% endfor %}
+                            </span>
+                        </span>
+
+                        <span class="monitor-situacao">
+                            {% include 'interface_aluno/_estado.html' with estado=r.estado %}
+
+                            <span class="situacao-detalhe">
+                                {% if r.estado == 'disponivel' %}
+                                    Atende até {{ r.horario_atual.hora_fim|time:"H:i" }}
+                                {% elif r.proxima_vaga %}
+                                    Próximo horário livre: {{ r.proxima_vaga.data|date:"D, d/m" }}, {{ r.proxima_vaga.horario.hora_inicio|time:"H:i" }}
+                                {% else %}
+                                    Sem horários livres no momento
+                                {% endif %}
+                            </span>
+                        </span>
+
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+
+    {% else %}
+
+        <div class="vazio">
+            {% if filtrando %}
+                <p>Nenhum monitor encontrado com esses filtros.</p>
+                <p><a href="{% url 'painel' %}">Limpar filtros</a> para ver todos os monitores.</p>
+            {% else %}
+                <p>Ainda não há monitores cadastrados.</p>
+            {% endif %}
+        </div>
+
+    {% endif %}
+
+{% endblock %}

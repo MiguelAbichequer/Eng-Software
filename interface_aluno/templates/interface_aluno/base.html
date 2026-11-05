@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}Monitores{% endblock %} - Sistema de Monitoria</title>
+    <link rel="stylesheet" href="{% static 'css/interface_aluno/painel.css' %}">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="topo-conteudo">
+            <a class="topo-marca" href="{% url 'painel' %}">Agendamento de Monitoria</a>
+            <nav class="topo-menu" aria-label="Principal">
+                <a href="{% url 'painel' %}" {% if request.resolver_match.url_name == 'painel' or request.resolver_match.url_name == 'monitor_detalhe' %}aria-current="page"{% endif %}>Monitores</a>
+                <a href="{% url 'minhas_solicitacoes' %}" {% if request.resolver_match.url_name == 'minhas_solicitacoes' %}aria-current="page"{% endif %}>Minhas solicitações</a>
+            </nav>
+            <div class="topo-usuario">
+                <span>{{ aluno.nome }}</span>
+                <form method="post" action="{% url 'sair' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao-sair">Sair</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main class="pagina">
+
+        {% if messages %}
+            <div class="avisos">
+                {% for mensagem in messages %}
+                    <p class="aviso aviso-{{ mensagem.tags }}" role="status">{{ mensagem }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block conteudo %}{% endblock %}
+
+    </main>
+
+</body>
+
+</html>
