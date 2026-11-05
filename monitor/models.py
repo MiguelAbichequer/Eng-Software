@@ -28,6 +28,11 @@ class Monitor(models.Model): #representa uma tabela no banco de dados
     
     matricula = models.CharField(max_length=20, unique=True)
     nome = models.CharField(max_length=100)
+
+    nome = models.CharField(max_length=100)
+    senha = models.CharField(max_length=128, blank=True) #guardada com hash (make_password), igual ao aluno
+    disciplinas = models.ManyToManyField(Disciplina, blank=True, related_name='monitores')
+
     disciplinas = models.ManyToManyField(Disciplina, blank=True, related_name='monitores')
 
     def __str__(self):
@@ -54,7 +59,19 @@ class Horario(models.Model):
     def clean(self):
         if self.hora_inicio and self.hora_fim and self.hora_fim <= self.hora_inicio:
             raise ValidationError('O horário final deve ser depois do inicial.')
-    # não deve haver sobreposição de horários para o mesmo monitor no mesmo dia da semana
+
+        # não deve haver sobreposição de horários para o mesmo monitor no mesmo dia da semana
+        # (dois intervalos se sobrepõem quando cada um começa antes de o outro terminar)
+        if self.monitor_id and self.hora_inicio and self.hora_fim:
+            conflitos = Horario.objects.filter(
+                monitor_id=self.monitor_id,
+                dia_semana=self.dia_semana,
+                hora_inicio__lt=self.hora_fim,
+                hora_fim__gt=self.hora_inicio,
+            ).exclude(pk=self.pk)
+            if conflitos.exists():
+                raise ValidationError('Esse horário se sobrepõe a outro já cadastrado para o mesmo dia.')
+        # não deve haver sobreposição de horários para o mesmo monitor no mesmo dia da semana
     def __str__(self):
         return f"{self.monitor} - {self.get_dia_semana_display()} {self.hora_inicio:%H:%M}-{self.hora_fim:%H:%M}"
 
