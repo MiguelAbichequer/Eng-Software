@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Relatório de atendimentos - Sistema de Monitoria</title>
+    <link rel="stylesheet" href="{% static 'css/administrador/relatorio.css' %}">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="topo-conteudo">
+            <span class="topo-marca">Agendamento de Monitoria &middot; Administração</span>
+            <nav class="topo-menu" aria-label="Administração">
+                <a href="{% url 'relatorio' %}" aria-current="page">Relatório</a>
+                <a href="{% url 'admin:index' %}">Cadastros (admin)</a>
+            </nav>
+            <div class="topo-usuario">
+                <span>{{ request.user.get_username }}</span>
+                <form method="post" action="{% url 'admin:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao-sair">Sair</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main class="pagina">
+
+        <h1>Relatório de atendimentos</h1>
+        <p class="subtitulo">
+            {{ periodo.inicio|date:"d/m/Y" }} a {{ periodo.fim|date:"d/m/Y" }}
+            ({{ periodo.dias }} dia{{ periodo.dias|pluralize }})
+            {% if monitor_escolhido %}&middot; monitor {{ monitor_escolhido.nome }}{% else %}&middot; todos os monitores{% endif %}
+        </p>
+
+        {% if erro %}
+            <p class="aviso aviso-error" role="alert">{{ erro }}</p>
+        {% endif %}
+
+        {# GET: o filtro fica na URL, então dá para recarregar e compartilhar o link #}
+        <form method="get" class="filtros">
+            <div class="campo">
+                <label for="filtro-inicio">De</label>
+                <input type="date" id="filtro-inicio" name="inicio" value="{{ periodo.inicio|date:'Y-m-d' }}">
+            </div>
+            <div class="campo">
+                <label for="filtro-fim">Até</label>
+                <input type="date" id="filtro-fim" name="fim" value="{{ periodo.fim|date:'Y-m-d' }}">
+            </div>
+            <div class="campo">
+                <label for="filtro-monitor">Monitor</label>
+                <select id="filtro-monitor" name="monitor">
+                    <option value="">Todos</option>
+                    {% for m in lista_monitores %}
+                        <option value="{{ m.id }}" {% if monitor_escolhido.id == m.id %}selected{% endif %}>{{ m.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filtros-acoes">
+                <button type="submit" class="botao">Atualizar</button>
+                <a class="botao botao-secundario" href="{% url 'relatorio_csv' %}{% if querystring %}?{{ querystring }}{% endif %}">Exportar CSV</a>
+            </div>
+        </form>
+
+        {% if not resumo.total %}
+
+            <div class="vazio">
+                <p>Nenhuma solicitação neste período.</p>
+                <p>Escolha outras datas ou outro monitor.</p>
+            </div>
+
+        {% else %}
+
+            <section aria-labelledby="titulo-resumo">
+                <h2 id="titulo-resumo" class="visualmente-oculto">Resumo</h2>
+                <dl class="numeros">
+                    <div class="numero">
+                        <dt>Solicitações</dt>
+                        <dd>{{ resumo.total }}</dd>
+                        <span class="numero-detalhe">{{ resumo.realizadas }} já realizada{{ resumo.realizadas|pluralize }}, {{ resumo.futuras }} ainda por acontecer</span>
+                    </div>
+                    <div class="numero">
+                        <dt>Alunos</dt>
+                        <dd>{{ resumo.alunos }}</dd>
+                        <span class="numero-detalhe">alunos diferentes com solicitação no período</span>
+                    </div>
+                    <div class="numero">
+                        <dt>Formato</dt>
+                        <dd class="numero-par">{{ resumo.presencial }} <small>presencial</small> &middot; {{ resumo.online }} <small>online</small></dd>
+                    </div>
+                    <div class="numero">
+                        <dt>Participantes</dt>
+                        <dd class="numero-par">{{ resumo.individual }} <small>individual</small> &middot; {{ resumo.grupo }} <small>em grupo</small></dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section aria-labelledby="titulo-dia">
+                <h2 id="titulo-dia">Atendimentos por dia</h2>
+                <table class="tabela">
+                    <thead>
+                        <tr><th scope="col">Dia</th><th scope="col" class="num">Solicitações</th><th scope="col" class="num">Alunos</th><th scope="col"><span class="visualmente-oculto">Proporção</span></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in por_dia %}
+                            <tr>
+                                <td class="sem-quebra">{{ linha.data|date:"D, d/m" }}</td>
+                                <td class="num">{{ linha.total }}</td>
+                                <td class="num">{{ linha.alunos }}</td>
+                                <td class="coluna-barra" aria-hidden="true"><span class="barra" style="width: {{ linha.barra }}%"></span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="nota">Só aparecem os dias com pelo menos uma solicitação.</p>
+            </section>
+
+            <div class="colunas">
+                <section aria-labelledby="titulo-horarios">
+                    <h2 id="titulo-horarios">Horários mais reservados</h2>
+                    <table class="tabela">
+                        <thead>
+                            <tr><th scope="col">Horário</th><th scope="col">Monitor</th><th scope="col" class="num">Reservas</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for h in horarios %}
+                                <tr>
+                                    <td>{{ h.dia }}, {{ h.horario__hora_inicio|time:"H:i" }}&ndash;{{ h.horario__hora_fim|time:"H:i" }}</td>
+                                    <td>{{ h.horario__monitor__nome }}</td>
+                                    <td class="num">{{ h.total }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+
+                <section aria-labelledby="titulo-assuntos">
+                    <h2 id="titulo-assuntos">Assuntos mais pedidos</h2>
+                    <table class="tabela">
+                        <thead>
+                            <tr><th scope="col">Assunto</th><th scope="col" class="num">Pedidos</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for a in assuntos %}
+                                <tr><td>{{ a.assunto }}</td><td class="num">{{ a.total }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+            {% if not monitor_escolhido %}
+                <section aria-labelledby="titulo-monitores">
+                    <h2 id="titulo-monitores">Por monitor</h2>
+                    <table class="tabela">
+                        <thead>
+                            <tr><th scope="col">Monitor</th><th scope="col" class="num">Solicitações</th><th scope="col" class="num">Alunos</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for m in monitores %}
+                                <tr>
+                                    <td><a href="?inicio={{ periodo.inicio|date:'Y-m-d' }}&amp;fim={{ periodo.fim|date:'Y-m-d' }}&amp;monitor={{ m.horario__monitor_id }}">{{ m.horario__monitor__nome }}</a></td>
+                                    <td class="num">{{ m.total }}</td>
+                                    <td class="num">{{ m.alunos }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            {% endif %}
+
+        {% endif %}
+
+    </main>
+
+</body>
+
+</html>

@@ -23,4 +23,5 @@ urlpatterns = [
     path('', include('inicio.urls')),
     path('monitor/', include('monitor.urls')),
     path('painel/', include('interface_aluno.urls')),
+    path('administrador/', include('administrador.urls')),
 ]

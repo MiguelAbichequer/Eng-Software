@@ -1,0 +1,202 @@
+/* Relatório do administrador. Mesmas cores da interface do aluno (painel.css). */
+
+:root {
+    --fundo: #eaf1f4;
+    --superficie: #ffffff;
+    --tinta: #14303b;
+    --tinta-suave: #4a626c;
+    --azul: #2f6f87;
+    --azul-escuro: #1f5266;
+    --linha: #c5d6dd;
+    --erro: #a3262a;
+    --erro-fundo: #fbe3e3;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--tinta);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+}
+
+a { color: var(--azul-escuro); }
+
+:focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
+
+.visualmente-oculto {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ---------- topo ---------- */
+
+.topo { background: var(--azul-escuro); color: #fff; }
+
+.topo-conteudo {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: .75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.topo-marca { font-weight: 700; }
+
+.topo-menu { display: flex; gap: 1.25rem; flex: 1; margin-left: 1rem; }
+.topo-menu a { color: rgba(255, 255, 255, .85); text-decoration: none; border-bottom: 2px solid transparent; }
+.topo-menu a:hover { color: #fff; }
+.topo-menu a[aria-current="page"] { color: #fff; font-weight: 700; border-bottom-color: #fff; }
+
+.topo-usuario { display: flex; align-items: center; gap: .75rem; }
+.topo-usuario form { margin: 0; }
+
+.botao-sair {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .6);
+    border-radius: 6px;
+    padding: .3rem .8rem;
+    font: inherit;
+    cursor: pointer;
+}
+.botao-sair:hover { background: rgba(255, 255, 255, .15); }
+.topo :focus-visible { outline-color: #fff; }
+
+/* ---------- estrutura ---------- */
+
+.pagina { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+h1 { font-size: 1.75rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.2rem; margin: 2rem 0 .75rem; }
+
+.subtitulo { margin: 0 0 1.25rem; color: var(--tinta-suave); }
+.nota { margin: .5rem 0 0; font-size: .85rem; color: var(--tinta-suave); }
+
+.aviso {
+    margin: 0 0 1rem;
+    padding: .75rem 1rem;
+    border-radius: 6px;
+    border-left: 6px solid;
+    font-weight: 600;
+}
+.aviso-error { background: var(--erro-fundo); border-color: var(--erro); color: #7a1b1e; }
+
+/* ---------- filtros ---------- */
+
+.filtros {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+    padding: 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+}
+
+.campo { display: flex; flex-direction: column; gap: .25rem; }
+.campo label { font-size: .9rem; font-weight: 600; }
+
+input[type="date"], select {
+    width: 100%;
+    height: 2.6rem;
+    padding: .5rem .6rem;
+    border: 1px solid var(--tinta-suave);
+    border-radius: 6px;
+    background: var(--superficie);
+    color: var(--tinta);
+    font: inherit;
+}
+
+.filtros-acoes { display: flex; gap: .5rem; }
+
+.botao {
+    display: inline-block;
+    background: var(--azul-escuro);
+    color: #fff;
+    border: 2px solid var(--azul-escuro);
+    border-radius: 6px;
+    padding: .5rem 1.1rem;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.botao:hover { background: var(--azul); border-color: var(--azul); }
+.botao-secundario { background: var(--superficie); color: var(--azul-escuro); }
+.botao-secundario:hover { background: var(--fundo); color: var(--azul-escuro); border-color: var(--azul-escuro); }
+
+/* ---------- números do resumo ---------- */
+
+.numeros {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+}
+
+.numero {
+    padding: 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+}
+
+.numero dt { font-size: .9rem; font-weight: 600; color: var(--tinta-suave); }
+.numero dd { margin: .15rem 0 0; font-size: 2rem; font-weight: 700; line-height: 1.2; }
+.numero dd.numero-par { font-size: 1.25rem; }
+.numero dd small { font-size: .85rem; font-weight: 400; color: var(--tinta-suave); }
+.numero-detalhe { display: block; margin-top: .25rem; font-size: .85rem; color: var(--tinta-suave); }
+
+/* ---------- tabelas ---------- */
+
+.tabela {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tabela th, .tabela td { padding: .55rem .9rem; text-align: left; border-top: 1px solid var(--linha); }
+.tabela thead th { border-top: 0; font-size: .85rem; color: var(--tinta-suave); background: #f4f8fa; }
+.tabela .num { text-align: right; font-variant-numeric: tabular-nums; width: 1%; white-space: nowrap; }
+
+.sem-quebra { white-space: nowrap; }
+.coluna-barra { width: 40%; }
+.barra { display: block; height: .6rem; min-width: 2px; border-radius: 999px; background: var(--azul); }
+
+.colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+/* ---------- estado vazio ---------- */
+
+.vazio {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    background: var(--superficie);
+    border: 1px dashed var(--tinta-suave);
+    border-radius: 8px;
+}
+.vazio p { margin: 0 0 .25rem; }
+
+/* ---------- telas pequenas ---------- */
+
+@media (max-width: 720px) {
+    .filtros { grid-template-columns: 1fr 1fr; }
+    .filtros-acoes { grid-column: 1 / -1; }
+    .numeros { grid-template-columns: 1fr 1fr; }
+    .colunas { grid-template-columns: 1fr; }
+    .coluna-barra { width: 30%; }
+    .topo-menu { order: 3; flex-basis: 100%; margin-left: 0; }
+}

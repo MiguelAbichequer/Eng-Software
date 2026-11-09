@@ -1,0 +1,14 @@
+{% extends "admin/index.html" %}
+
+{# Mesma página inicial do /admin/, com um atalho para o relatório no topo. #}
+
+{% block content %}
+<div class="module" style="margin-bottom: 20px;">
+    <h2>Relatórios</h2>
+    <p style="padding: 8px 16px; margin: 0;">
+        <a href="{% url 'relatorio' %}"><strong>Relatório de atendimentos</strong></a>
+        &mdash; por dia, horários mais reservados, assuntos mais pedidos e exportação em CSV.
+    </p>
+</div>
+{{ block.super }}
+{% endblock %}

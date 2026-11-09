@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'inicio',
     'login',
     'interface_aluno',
+    'administrador',
 ]
 
 MIDDLEWARE = [
