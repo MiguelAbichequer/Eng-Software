@@ -23,4 +23,6 @@ urlpatterns = [
     path('', include('inicio.urls')),
     path('monitor/', include('monitor.urls')),
     path('painel/', include('interface_aluno.urls')),
+    path('painel/', include('interface_aluno.urls')),
+    path('painel-monitor/', include('interface_monitor.urls')),
 ]

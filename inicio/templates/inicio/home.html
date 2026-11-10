@@ -26,7 +26,10 @@
             {% if mensagem %}
                 <p>{{ mensagem }}</p>
             {% endif %}
-
+            <label>Entrar como:</label>
+            <label><input type="radio" name="tipo" value="aluno" {% if tipo != 'monitor' %}checked{% endif %}> Aluno</label>
+            <label><input type="radio" name="tipo" value="monitor" {% if tipo == 'monitor' %}checked{% endif %}> Monitor</label>
+            <br><br>
             <label for="username">Matrícula:</label>
             <input type="text" id="username" name="username" required>
             <br><br>
