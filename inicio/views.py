@@ -4,6 +4,8 @@ from django.views.decorators.http import require_POST
 from alunos.models import Aluno
 from monitor.models import Monitor
 
+CONTA_SUSPENSA = 'Esta conta foi suspensa pela administração. Procure a coordenação da monitoria.'
+
 
 def _entrar(request, chave, usuario, destino):
     #guarda quem fez login na sessão e leva a pessoa para a tela de utilização
@@ -27,6 +29,13 @@ def home(request):
             usuario = modelo.objects.get(matricula=matricula)
 
             if check_password(senha, usuario.senha):
+                #conta expulsa pelo administrador: a senha está certa, mas o acesso foi bloqueado
+                #(só avisamos depois de conferir a senha, para não revelar a situação a qualquer um)
+                if usuario.expulso:
+                    return render(request, 'inicio/home.html', {
+                        'erro': CONTA_SUSPENSA,
+                        'tipo': tipo,
+                    })
                 if tipo == 'monitor':
                     return _entrar(request, 'monitor_id', usuario, 'monitor_painel')
                 return _entrar(request, 'aluno_id', usuario, 'painel')
@@ -47,6 +56,10 @@ def home(request):
         return redirect('painel')
     if request.session.get('monitor_id'):
         return redirect('monitor_painel')
+
+    #os decorators mandam para cá com ?suspenso=1 quem foi expulso com a sessão aberta
+    if request.GET.get('suspenso'):
+        return render(request, 'inicio/home.html', {'erro': CONTA_SUSPENSA})
 
     return render(request, 'inicio/home.html')
 

@@ -1,0 +1,162 @@
+{% extends 'administrador/base.html' %}
+
+{# Ficha de um aluno ou de um monitor. As partes que só existem para monitor ficam em "if tipo == 'monitor'". #}
+
+{% block titulo %}{{ usuario.nome }}{% endblock %}
+{% block menu_usuarios %}aria-current="page"{% endblock %}
+
+{% block conteudo %}
+
+    <a class="voltar" href="{% url 'usuarios' %}">&larr; Voltar para os usuários</a>
+
+    <h1>
+        {{ usuario.nome }}
+        {% if usuario.expulso %}<span class="selo selo-expulso">Expulso</span>{% else %}<span class="selo selo-ativo">Ativo</span>{% endif %}
+    </h1>
+    <p class="subtitulo">{% if tipo == 'monitor' %}Monitor{% else %}Aluno{% endif %} &middot; matrícula {{ usuario.matricula }}</p>
+
+    {% if usuario.expulso %}
+        <section class="caixa caixa-expulso" aria-labelledby="titulo-expulsao">
+            <h2 id="titulo-expulsao">Conta expulsa</h2>
+            <p>Expulso em {{ usuario.expulso_em|date:"d/m/Y" }} às {{ usuario.expulso_em|time:"H:i" }}. Motivo: {{ usuario.motivo_expulsao }}</p>
+            <p>{% if tipo == 'monitor' %}O monitor não consegue entrar e não aparece para os alunos.{% else %}O aluno não consegue entrar no sistema.{% endif %} O histórico abaixo continua guardado e conta no relatório.</p>
+            <form method="post" action="{% url 'usuario_readmitir' tipo usuario.id %}">
+                {% csrf_token %}
+                <button type="submit" class="botao">Readmitir</button>
+            </form>
+        </section>
+    {% endif %}
+
+    <dl class="numeros numeros-3">
+        <div class="numero">
+            <dt>Atendimentos</dt>
+            <dd>{{ total }}</dd>
+            <span class="numero-detalhe">{% if tipo == 'monitor' %}recebidos{% else %}solicitados{% endif %}, em qualquer data</span>
+        </div>
+        <div class="numero">
+            <dt>Já realizados</dt>
+            <dd>{{ realizadas }}</dd>
+        </div>
+        <div class="numero">
+            <dt>Próximos</dt>
+            <dd>{{ proximas|length }}</dd>
+        </div>
+    </dl>
+
+    {% if tipo == 'monitor' %}
+        <section aria-labelledby="titulo-monitoria">
+            <h2 id="titulo-monitoria">Monitoria</h2>
+            <dl class="ficha">
+                <div>
+                    <dt>Situação agora</dt>
+                    <dd>
+                        {% if usuario.expulso %}Expulso
+                        {% elif resumo.estado == 'disponivel' %}Disponível{% if resumo.manual %} (marcado pelo monitor){% endif %}
+                        {% elif resumo.estado == 'em_atendimento' %}Em atendimento
+                        {% else %}Indisponível{% if resumo.manual %} (marcado pelo monitor){% endif %}{% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt>Disciplinas</dt>
+                    <dd>{% for d in disciplinas %}{{ d.nome }}{% if not forloop.last %}, {% endif %}{% empty %}Nenhuma{% endfor %}</dd>
+                </div>
+                <div>
+                    <dt>Horários semanais</dt>
+                    <dd>
+                        {% for h in horarios %}{{ h.get_dia_semana_display }}, {{ h.hora_inicio|time:"H:i" }}&ndash;{{ h.hora_fim|time:"H:i" }}{% if not forloop.last %}<br>{% endif %}{% empty %}Nenhum cadastrado{% endfor %}
+                    </dd>
+                </div>
+            </dl>
+            <p><a href="{% url 'relatorio' %}?monitor={{ usuario.id }}">Ver este monitor no relatório do mês &rarr;</a></p>
+        </section>
+    {% endif %}
+
+    <section aria-labelledby="titulo-proximos">
+        <h2 id="titulo-proximos">Próximos atendimentos</h2>
+        {% if proximas %}
+            <div class="rolagem">
+                <table class="tabela">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data</th>
+                            <th scope="col">Horário</th>
+                            <th scope="col">{% if tipo == 'monitor' %}Aluno{% else %}Monitor{% endif %}</th>
+                            <th scope="col">Assunto</th>
+                            <th scope="col">Formato</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in proximas %}
+                            <tr>
+                                <td class="sem-quebra">{{ s.data|date:"D, d/m" }}</td>
+                                <td class="sem-quebra">{{ s.horario.hora_inicio|time:"H:i" }}&ndash;{{ s.horario.hora_fim|time:"H:i" }}</td>
+                                <td>{% if tipo == 'monitor' %}<a href="{% url 'usuario' 'aluno' s.aluno.id %}">{{ s.aluno.nome }}</a>{% else %}<a href="{% url 'usuario' 'monitor' s.horario.monitor.id %}">{{ s.horario.monitor.nome }}</a>{% endif %}</td>
+                                <td>{{ s.assunto }}</td>
+                                <td>{{ s.get_formato_display }}, {{ s.get_participantes_display|lower }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="nota">Nenhum atendimento marcado.</p>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="titulo-historico">
+        <h2 id="titulo-historico">Histórico</h2>
+        {% if anteriores %}
+            <div class="rolagem">
+                <table class="tabela">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data</th>
+                            <th scope="col">Horário</th>
+                            <th scope="col">{% if tipo == 'monitor' %}Aluno{% else %}Monitor{% endif %}</th>
+                            <th scope="col">Assunto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in anteriores %}
+                            <tr>
+                                <td class="sem-quebra">{{ s.data|date:"d/m/Y" }}</td>
+                                <td class="sem-quebra">{{ s.horario.hora_inicio|time:"H:i" }}&ndash;{{ s.horario.hora_fim|time:"H:i" }}</td>
+                                <td>{% if tipo == 'monitor' %}{{ s.aluno.nome }}{% else %}{{ s.horario.monitor.nome }}{% endif %}</td>
+                                <td>{{ s.assunto }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if realizadas > limite_historico %}<p class="nota">Mostrando os {{ limite_historico }} mais recentes de {{ realizadas }}.</p>{% endif %}
+        {% else %}
+            <p class="nota">Nenhum atendimento realizado ainda.</p>
+        {% endif %}
+    </section>
+
+    {% if not usuario.expulso %}
+        <section class="caixa caixa-perigo" aria-labelledby="titulo-expulsar">
+            <h2 id="titulo-expulsar">Expulsar {% if tipo == 'monitor' %}monitor{% else %}aluno{% endif %}</h2>
+            <p>
+                {{ usuario.nome }} deixa de conseguir entrar no sistema{% if tipo == 'monitor' %} e some da lista de monitores dos alunos{% endif %}.
+                {% if a_cancelar %}
+                    <strong>{{ a_cancelar }} atendimento{{ a_cancelar|pluralize }} que ainda não começ{{ a_cancelar|pluralize:"ou,aram" }} {{ a_cancelar|pluralize:"será,serão" }} cancelado{{ a_cancelar|pluralize }}.</strong>
+                {% endif %}
+                O histórico é mantido, e dá para readmitir depois.
+            </p>
+            <form method="post" action="{% url 'usuario_expulsar' tipo usuario.id %}" class="form-expulsar">
+                {% csrf_token %}
+                <div class="campo">
+                    <label for="motivo">Motivo</label>
+                    <input type="text" id="motivo" name="motivo" maxlength="200" required placeholder="Ex.: faltou a 3 atendimentos sem avisar">
+                </div>
+                <label class="confirmacao">
+                    <input type="checkbox" name="confirmo" value="sim" required>
+                    Confirmo que quero expulsar {{ usuario.nome }}
+                </label>
+                <button type="submit" class="botao botao-perigo">Expulsar</button>
+            </form>
+        </section>
+    {% endif %}
+
+{% endblock %}

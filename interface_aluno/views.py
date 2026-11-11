@@ -29,7 +29,8 @@ def painel(request):
     disciplina_id = request.GET.get('disciplina', '')
     disponibilidade = request.GET.get('disponibilidade', '')
 
-    monitores = Monitor.objects.prefetch_related('disciplinas', 'horarios')
+    #monitores expulsos pelo administrador não aparecem para os alunos
+    monitores = Monitor.objects.filter(expulso_em__isnull=True).prefetch_related('disciplinas', 'horarios')
     if nome:
         monitores = monitores.filter(nome__icontains=nome)
     if disciplina_id.isdigit():
@@ -51,8 +52,10 @@ def painel(request):
     return render(request, 'interface_aluno/painel.html', {
         'aluno': request.aluno,
         'resumos': resumos,
-        #só oferece no filtro as disciplinas que têm pelo menos um monitor
-        'disciplinas': Disciplina.objects.filter(monitores__isnull=False).distinct(),
+        #só oferece no filtro as disciplinas que têm pelo menos um monitor ativo
+        'disciplinas': Disciplina.objects.filter(
+            monitores__isnull=False, monitores__expulso_em__isnull=True,
+        ).distinct(),
         'filtros': {'nome': nome, 'disciplina': disciplina_id, 'disponibilidade': disponibilidade},
         'filtrando': bool(nome or disciplina_id or disponibilidade),
         'querystring': request.GET.urlencode(),
@@ -62,7 +65,9 @@ def painel(request):
 @aluno_logado
 def monitor_detalhe(request, monitor_id):
     """Tela do monitor escolhido: disponibilidade atual e horários para solicitar."""
-    monitor = get_object_or_404(Monitor.objects.prefetch_related('disciplinas', 'horarios'), pk=monitor_id)
+    monitor = get_object_or_404(
+        Monitor.objects.prefetch_related('disciplinas', 'horarios'), pk=monitor_id, expulso_em__isnull=True,
+    )
 
     agora = agora_local()
     ocupados = datas_ocupadas([monitor], agora.date())
@@ -99,7 +104,10 @@ def monitor_detalhe(request, monitor_id):
 @require_POST
 def solicitar_horario(request, horario_id):
     """Cria a solicitação. O agendamento é imediato: o horário já fica reservado."""
-    horario = get_object_or_404(Horario.objects.select_related('monitor'), pk=horario_id)
+    #horário de monitor expulso não pode mais ser solicitado (vira 404)
+    horario = get_object_or_404(
+        Horario.objects.select_related('monitor'), pk=horario_id, monitor__expulso_em__isnull=True,
+    )
     voltar = redirect('monitor_detalhe', monitor_id=horario.monitor_id)
 
     assunto = request.POST.get('assunto', '').strip()

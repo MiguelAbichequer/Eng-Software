@@ -1,0 +1,84 @@
+{% extends 'administrador/base.html' %}
+
+{% block titulo %}Usuários{% endblock %}
+{% block menu_usuarios %}aria-current="page"{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Usuários</h1>
+    <p class="subtitulo">
+        {{ linhas|length }} resultado{{ linhas|length|pluralize }}{% if total_expulsos %}, {{ total_expulsos }} expulso{{ total_expulsos|pluralize }}{% endif %}.
+        Clique em um nome para ver os atendimentos ou expulsar.
+    </p>
+
+    <form method="get" class="filtros">
+        <div class="campo">
+            <label for="filtro-busca">Nome ou matrícula</label>
+            <input type="search" id="filtro-busca" name="busca" value="{{ filtros.busca }}" placeholder="Ex.: Ana ou 2024001">
+        </div>
+        <div class="campo">
+            <label for="filtro-tipo">Tipo</label>
+            <select id="filtro-tipo" name="tipo">
+                <option value="">Alunos e monitores</option>
+                <option value="aluno" {% if filtros.tipo == 'aluno' %}selected{% endif %}>Só alunos</option>
+                <option value="monitor" {% if filtros.tipo == 'monitor' %}selected{% endif %}>Só monitores</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label for="filtro-situacao">Situação</label>
+            <select id="filtro-situacao" name="situacao">
+                <option value="">Todas</option>
+                <option value="ativos" {% if filtros.situacao == 'ativos' %}selected{% endif %}>Ativos</option>
+                <option value="expulsos" {% if filtros.situacao == 'expulsos' %}selected{% endif %}>Expulsos</option>
+            </select>
+        </div>
+        <div class="filtros-acoes">
+            <button type="submit" class="botao">Buscar</button>
+            {% if filtrando %}<a class="botao botao-secundario" href="{% url 'usuarios' %}">Limpar</a>{% endif %}
+        </div>
+    </form>
+
+    {% if linhas %}
+        <div class="rolagem">
+            <table class="tabela tabela-usuarios">
+                <thead>
+                    <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">Matrícula</th>
+                        <th scope="col">Tipo</th>
+                        <th scope="col" class="num">Atendimentos</th>
+                        <th scope="col">Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in linhas %}
+                        <tr>
+                            <td><a href="{% url 'usuario' l.tipo l.usuario.id %}">{{ l.usuario.nome }}</a></td>
+                            <td>{{ l.usuario.matricula }}</td>
+                            <td>{{ l.tipo_rotulo }}</td>
+                            <td class="num">{{ l.solicitacoes }}</td>
+                            <td>
+                                {% if l.usuario.expulso %}
+                                    <span class="selo selo-expulso">Expulso</span>
+                                {% else %}
+                                    <span class="selo selo-ativo">Ativo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="nota">"Atendimentos" conta as solicitações que o aluno fez ou que o monitor recebeu, em qualquer data. Quem é aluno e monitor aparece duas vezes, porque são cadastros separados.</p>
+    {% else %}
+        <div class="vazio">
+            {% if filtrando %}
+                <p>Nenhum usuário encontrado com esses filtros.</p>
+                <p><a href="{% url 'usuarios' %}">Limpar os filtros</a></p>
+            {% else %}
+                <p>Ainda não há alunos nem monitores cadastrados.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+{% endblock %}

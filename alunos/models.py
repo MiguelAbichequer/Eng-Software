@@ -21,6 +21,15 @@ class Aluno(models.Model): #representa uma tabela no banco de dados
     senha = models.CharField(max_length=128, blank=True)
     #email
 
+    #expulsão feita pelo administrador. Não apaga a conta (o histórico continua no relatório):
+    #só impede o login e esconde a pessoa do sistema. Vazio = conta ativa.
+    expulso_em = models.DateTimeField(null=True, blank=True)
+    motivo_expulsao = models.CharField(max_length=200, blank=True)
+
+    @property
+    def expulso(self):
+        return self.expulso_em is not None
+
     #método chamado quando um print é usado
     def __str__(self):
         return self.nome

@@ -1,6 +1,7 @@
 from functools import wraps
 
 from django.shortcuts import redirect
+from django.urls import reverse
 
 from monitor.models import Monitor
 
@@ -20,6 +21,11 @@ def monitor_logado(view):
             #monitor apagado depois do login: limpa a sessão e volta para a tela inicial
             request.session.flush()
             return redirect('home')
+
+        if request.monitor.expulso:
+            #expulso pelo administrador com a sessão ainda aberta: desconecta na hora
+            request.session.flush()
+            return redirect(reverse('home') + '?suspenso=1')
 
         return view(request, *args, **kwargs)
 

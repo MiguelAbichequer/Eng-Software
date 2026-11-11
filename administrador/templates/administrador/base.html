@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+{# Esqueleto das telas do administrador. Cada tela preenche "titulo" e "conteudo" #}
+{# e marca seu item do menu com aria-current (bloco menu_relatorio ou menu_usuarios). #}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}Administração{% endblock %} - Sistema de Monitoria</title>
+    <link rel="stylesheet" href="{% static 'css/administrador/relatorio.css' %}">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="topo-conteudo">
+            <span class="topo-marca">Agendamento de Monitoria &middot; Administração</span>
+            <nav class="topo-menu" aria-label="Administração">
+                <a href="{% url 'relatorio' %}" {% block menu_relatorio %}{% endblock %}>Relatório</a>
+                <a href="{% url 'usuarios' %}" {% block menu_usuarios %}{% endblock %}>Usuários</a>
+                <a href="{% url 'admin:index' %}">Cadastros (admin)</a>
+            </nav>
+            <div class="topo-usuario">
+                <span>{{ request.user.get_username }}</span>
+                <form method="post" action="{% url 'admin:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao-sair">Sair</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main class="pagina">
+
+        {# avisos de sucesso e erro das ações (messages.success / messages.error nas views) #}
+        {% for mensagem in messages %}
+            <p class="aviso aviso-{{ mensagem.tags }}" role="status">{{ mensagem }}</p>
+        {% endfor %}
+
+        {% block conteudo %}{% endblock %}
+
+    </main>
+
+</body>
+
+</html>

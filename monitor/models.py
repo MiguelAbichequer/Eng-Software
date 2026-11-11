@@ -38,6 +38,15 @@ class Monitor(models.Model): #representa uma tabela no banco de dados
     status_manual = models.CharField(max_length=12, choices=STATUS_MANUAL, blank=True)
     status_manual_ate = models.DateTimeField(null=True, blank=True)
 
+    #expulsão feita pelo administrador. Não apaga a conta (o histórico continua no relatório):
+    #só impede o login e esconde a pessoa do sistema. Vazio = conta ativa.
+    expulso_em = models.DateTimeField(null=True, blank=True)
+    motivo_expulsao = models.CharField(max_length=200, blank=True)
+
+    @property
+    def expulso(self):
+        return self.expulso_em is not None
+
     def __str__(self):
         return self.nome
 

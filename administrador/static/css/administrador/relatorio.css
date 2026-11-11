@@ -1,4 +1,4 @@
-/* Relatório do administrador. Mesmas cores da interface do aluno (painel.css). */
+/* Telas do administrador (relatório e usuários). Mesmas cores da interface do aluno (painel.css). */
 
 :root {
     --fundo: #eaf1f4;
@@ -10,6 +10,8 @@
     --linha: #c5d6dd;
     --erro: #a3262a;
     --erro-fundo: #fbe3e3;
+    --verde: #17724a;
+    --verde-fundo: #e2f4ea;
 }
 
 * { box-sizing: border-box; }
@@ -88,6 +90,7 @@ h2 { font-size: 1.2rem; margin: 2rem 0 .75rem; }
     font-weight: 600;
 }
 .aviso-error { background: var(--erro-fundo); border-color: var(--erro); color: #7a1b1e; }
+.aviso-success { background: var(--verde-fundo); border-color: var(--verde); color: #0f4f33; }
 
 /* ---------- filtros ---------- */
 
@@ -105,7 +108,7 @@ h2 { font-size: 1.2rem; margin: 2rem 0 .75rem; }
 .campo { display: flex; flex-direction: column; gap: .25rem; }
 .campo label { font-size: .9rem; font-weight: 600; }
 
-input[type="date"], select {
+input[type="date"], input[type="search"], input[type="text"], select {
     width: 100%;
     height: 2.6rem;
     padding: .5rem .6rem;
@@ -176,6 +179,9 @@ input[type="date"], select {
 .coluna-barra { width: 40%; }
 .barra { display: block; height: .6rem; min-width: 2px; border-radius: 999px; background: var(--azul); }
 
+/* tabelas largas rolam para o lado no celular, sem alargar a página */
+.rolagem { overflow-x: auto; border-radius: 8px; }
+
 .colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 
 /* ---------- estado vazio ---------- */
@@ -190,6 +196,58 @@ input[type="date"], select {
 }
 .vazio p { margin: 0 0 .25rem; }
 
+/* ---------- usuários ---------- */
+
+.voltar { display: inline-block; margin-bottom: .75rem; }
+
+h1 .selo { vertical-align: middle; margin-left: .5rem; }
+
+/* sempre com texto: a cor é só reforço */
+.selo {
+    display: inline-block;
+    padding: .1rem .6rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 700;
+    border: 1px solid;
+}
+.selo-ativo { color: var(--verde); background: var(--verde-fundo); border-color: var(--verde); }
+.selo-expulso { color: var(--erro); background: var(--erro-fundo); border-color: var(--erro); }
+
+.numeros-3 { grid-template-columns: repeat(3, 1fr); }
+
+.ficha {
+    display: grid;
+    gap: .75rem;
+    margin: 0;
+    padding: 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+}
+.ficha dt { font-size: .9rem; font-weight: 600; color: var(--tinta-suave); }
+.ficha dd { margin: .1rem 0 0; }
+
+.caixa {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    border: 1px solid;
+    border-left-width: 6px;
+}
+.caixa h2 { margin-top: 0; }
+.caixa p { margin: 0 0 .75rem; }
+.caixa form { margin: 0; }
+.caixa-expulso { background: var(--erro-fundo); border-color: var(--erro); }
+.caixa-perigo { margin-top: 2.5rem; background: var(--superficie); border-color: var(--erro); }
+
+.form-expulsar { display: grid; gap: .75rem; max-width: 32rem; }
+.confirmacao { display: flex; gap: .5rem; align-items: center; }
+.confirmacao input { width: 1.1rem; height: 1.1rem; }
+
+.botao-perigo { background: var(--erro); border-color: var(--erro); justify-self: start; }
+.botao-perigo:hover { background: #7a1b1e; border-color: #7a1b1e; }
+
 /* ---------- telas pequenas ---------- */
 
 @media (max-width: 720px) {
@@ -199,4 +257,6 @@ input[type="date"], select {
     .colunas { grid-template-columns: 1fr; }
     .coluna-barra { width: 30%; }
     .topo-menu { order: 3; flex-basis: 100%; margin-left: 0; }
+    .numeros-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .tabela th, .tabela td { padding: .5rem .6rem; }
 }
