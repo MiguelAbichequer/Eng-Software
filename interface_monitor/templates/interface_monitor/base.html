@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}Atendimentos{% endblock %} - Sistema de Monitoria</title>
+    {# o visual é o mesmo da tela do aluno: reaproveita o CSS dela e acrescenta só o que é do monitor #}
+    <link rel="stylesheet" href="{% static 'css/interface_aluno/painel.css' %}">
+    <link rel="stylesheet" href="{% static 'css/interface_monitor/monitor.css' %}">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="topo-conteudo">
+            <a class="topo-marca" href="{% url 'monitor_painel' %}">Agendamento de Monitoria <span class="topo-papel">Monitor</span></a>
+            <nav class="topo-menu" aria-label="Principal">
+                <a href="{% url 'monitor_painel' %}" {% if request.resolver_match.url_name == 'monitor_painel' %}aria-current="page"{% endif %}>Atendimentos</a>
+                <a href="{% url 'monitor_horarios' %}" {% if request.resolver_match.url_name == 'monitor_horarios' %}aria-current="page"{% endif %}>Horários</a>
+                <a href="{% url 'monitor_disciplinas' %}" {% if request.resolver_match.url_name == 'monitor_disciplinas' %}aria-current="page"{% endif %}>Disciplinas</a>
+            </nav>
+            <div class="topo-usuario">
+                <span>{{ monitor.nome }}</span>
+                <form method="post" action="{% url 'sair' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao-sair">Sair</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <main class="pagina">
+
+        {% if messages %}
+            <div class="avisos">
+                {% for mensagem in messages %}
+                    <p class="aviso aviso-{{ mensagem.tags }}" role="status">{{ mensagem }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block conteudo %}{% endblock %}
+
+    </main>
+
+</body>
+
+</html>

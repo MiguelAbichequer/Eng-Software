@@ -1,0 +1,140 @@
+{% extends 'interface_monitor/base.html' %}
+
+{% block titulo %}Atendimentos{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Atendimentos</h1>
+    <p class="subtitulo">
+        {% for d in monitor.disciplinas.all %}{{ d.nome }}{% if not forloop.last %}, {% endif %}{% empty %}Nenhuma disciplina cadastrada. <a href="{% url 'monitor_disciplinas' %}">Adicionar disciplinas</a>{% endfor %}
+    </p>
+
+    <section class="situacao estado-{{ resumo.estado }}" aria-labelledby="titulo-situacao">
+        <h2 id="titulo-situacao">
+            {% if resumo.estado == 'disponivel' %}Disponível agora
+            {% elif resumo.estado == 'em_atendimento' %}Em atendimento
+            {% else %}Indisponível agora{% endif %}
+        </h2>
+        <p>
+            {% if resumo.estado == 'disponivel' %}
+                {% if resumo.manual %}
+                    Você marcou que está disponível até {{ resumo.manual_ate|time:"H:i" }}, mesmo fora do seu horário de atendimento.
+                {% else %}
+                    Seu horário vai até {{ resumo.horario_atual.hora_fim|time:"H:i" }} e ninguém o solicitou até agora.
+                {% endif %}
+            {% elif resumo.manual %}
+                Você marcou que está indisponível até {{ resumo.manual_ate|time:"H:i" }}. Os alunos veem você assim mesmo que haja horário de atendimento neste período.
+            {% elif resumo.estado == 'em_atendimento' %}
+                {% if atual %}
+                    {{ atual.aluno.nome }}: {{ atual.assunto }} ({{ atual.get_formato_display|lower }}, {{ atual.get_participantes_display|lower }}), até {{ atual.horario.hora_fim|time:"H:i" }}.
+                {% else %}
+                    Até {{ resumo.horario_atual.hora_fim|time:"H:i" }}.
+                {% endif %}
+            {% elif proximo %}
+                Fora do horário de atendimento. Próximo atendimento: {{ proximo.data|date:"l, d/m" }}, às {{ proximo.horario.hora_inicio|time:"H:i" }}, com {{ proximo.aluno.nome }}.
+            {% elif not tem_horarios %}
+                Você ainda não cadastrou horários de atendimento, então os alunos não conseguem solicitar nada.
+            {% else %}
+                Fora do horário de atendimento e sem atendimentos marcados.
+            {% endif %}
+        </p>
+    </section>
+    <p class="nota">É assim que os alunos veem você agora.{% if not resumo.manual %} O estado muda sozinho conforme os seus horários.{% endif %}</p>
+
+    <section class="status-manual" aria-labelledby="titulo-status-manual">
+        <h2 id="titulo-status-manual">Mudar meu status</h2>
+
+        {% if resumo.manual %}
+            <p>
+                Você definiu o status à mão até {{ resumo.manual_ate|time:"H:i" }}. Depois disso, ele volta a seguir os seus horários.
+            </p>
+            <form method="post" action="{% url 'monitor_status' %}">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="automatico">
+                <button type="submit" class="botao botao-secundario">Voltar ao automático</button>
+            </form>
+        {% else %}
+            <form method="post" action="{% url 'monitor_status' %}" class="status-form">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="{% if resumo.estado_automatico == 'indisponivel' %}disponivel{% else %}indisponivel{% endif %}">
+
+                <div class="campo">
+                    <label for="duracao">Por quanto tempo</label>
+                    <select id="duracao" name="duracao">
+                        <option value="30">30 minutos</option>
+                        <option value="60" selected>1 hora</option>
+                        <option value="120">2 horas</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="botao">
+                    {% if resumo.estado_automatico == 'indisponivel' %}Ficar disponível agora{% else %}Ficar indisponível agora{% endif %}
+                </button>
+            </form>
+            <p class="nota">
+                {% if resumo.estado_automatico == 'indisponivel' %}
+                    Use quando for atender fora do seu horário. Os alunos passam a ver você como disponível.
+                {% else %}
+                    Use quando precisar se ausentar. Os alunos passam a ver você como indisponível, mas os atendimentos já marcados continuam valendo.
+                {% endif %}
+            </p>
+        {% endif %}
+    </section>
+
+    {% if not tem_horarios %}
+        <div class="vazio">
+            <p>Cadastre os dias e horas em que você atende.</p>
+            <p><a class="botao" href="{% url 'monitor_horarios' %}">Cadastrar horários</a></p>
+        </div>
+    {% endif %}
+
+    <section aria-labelledby="titulo-proximos">
+        <h2 id="titulo-proximos">Atendimentos marcados</h2>
+
+        {% if proximas %}
+            {% regroup proximas by data as dias %}
+
+            {% for dia in dias %}
+                <div class="dia">
+                    <h3>{{ dia.grouper|date:"l, d/m" }}</h3>
+                    <ul class="solicitacoes">
+                        {% for s in dia.list %}
+                            {% include 'interface_monitor/_atendimento.html' with acoes=True %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        {% elif tem_horarios %}
+            <div class="vazio">
+                <p>Nenhum aluno solicitou atendimento por enquanto.</p>
+                <p>Os pedidos aparecem aqui assim que alguém reservar um dos seus horários.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    {% if anteriores %}
+        <section aria-labelledby="titulo-anteriores">
+            <h2 id="titulo-anteriores">Atendimentos anteriores</h2>
+            <ul class="solicitacoes solicitacoes-passadas">
+                {% for s in anteriores %}
+                    <li class="solicitacao-item">
+                        <div class="solicitacao-quando">
+                            <strong>{{ s.data|date:"D, d/m" }}</strong>
+                            <span>{{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}</span>
+                        </div>
+                        <div class="solicitacao-dados">
+                            <span class="solicitacao-monitor">{{ s.aluno.nome }}</span>
+                            <span>{{ s.assunto }}</span>
+                            <span class="solicitacao-meta">
+                                <span class="etiqueta">{{ s.get_formato_display }}</span>
+                                <span class="etiqueta">{{ s.get_participantes_display }}</span>
+                            </span>
+                        </div>
+                        <div></div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+{% endblock %}

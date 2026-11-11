@@ -19,9 +19,15 @@
         </h2>
         <p>
             {% if resumo.estado == 'disponivel' %}
-                Atende até {{ resumo.horario_atual.hora_fim|time:"H:i" }}. Você pode solicitar este horário abaixo.
+                {% if resumo.manual %}
+                    Este monitor marcou que está disponível até {{ resumo.manual_ate|time:"H:i" }}.
+                {% else %}
+                    Atende até {{ resumo.horario_atual.hora_fim|time:"H:i" }}. Você pode solicitar este horário abaixo.
+                {% endif %}
             {% elif resumo.estado == 'em_atendimento' %}
                 {% if atual_e_meu %}Você solicitou o horário de agora (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}).{% else %}O horário de agora (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}) já foi solicitado por outra pessoa.{% endif %}
+            {% elif resumo.manual %}
+                Este monitor marcou que está indisponível até {{ resumo.manual_ate|time:"H:i" }}. Você ainda pode solicitar os horários livres abaixo.
             {% elif resumo.proxima_vaga %}
                 Próximo horário livre: {{ resumo.proxima_vaga.data|date:"l, d/m" }}, das {{ resumo.proxima_vaga.horario.hora_inicio|time:"H:i" }} às {{ resumo.proxima_vaga.horario.hora_fim|time:"H:i" }}.
             {% else %}

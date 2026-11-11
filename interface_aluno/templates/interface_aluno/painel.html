@@ -62,7 +62,9 @@
 
                             <span class="situacao-detalhe">
                                 {% if r.estado == 'disponivel' %}
-                                    Atende até {{ r.horario_atual.hora_fim|time:"H:i" }}
+                                    Atende até {{ r.disponivel_ate|time:"H:i" }}
+                                {% elif r.manual %}
+                                    Indisponível até {{ r.manual_ate|time:"H:i" }}
                                 {% elif r.proxima_vaga %}
                                     Próximo horário livre: {{ r.proxima_vaga.data|date:"D, d/m" }}, {{ r.proxima_vaga.horario.hora_inicio|time:"H:i" }}
                                 {% else %}

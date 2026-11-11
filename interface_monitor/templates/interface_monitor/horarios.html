@@ -1,0 +1,88 @@
+{% extends 'interface_monitor/base.html' %}
+
+{% block titulo %}Meus horários{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Meus horários</h1>
+    <p class="subtitulo">Os horários em que você atende toda semana. Os alunos podem solicitar os livres das próximas duas semanas.</p>
+
+    <section aria-labelledby="titulo-novo">
+        <h2 id="titulo-novo" class="titulo-primeiro">Cadastrar horário</h2>
+
+        <form method="post" action="{% url 'monitor_horario_novo' %}" class="novo-horario">
+            {% csrf_token %}
+
+            <div class="campo">
+                <label for="dia-semana">Dia da semana</label>
+                <select id="dia-semana" name="dia_semana" required>
+                    <option value="" disabled selected>Escolha</option>
+                    {% for valor, rotulo in dias_semana %}
+                        <option value="{{ valor }}">{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="hora-inicio">Início</label>
+                <input type="time" id="hora-inicio" name="hora_inicio" required>
+            </div>
+
+            <div class="campo">
+                <label for="hora-fim">Fim</label>
+                <input type="time" id="hora-fim" name="hora_fim" required>
+            </div>
+
+            <button type="submit" class="botao">Cadastrar</button>
+        </form>
+    </section>
+
+    <section aria-labelledby="titulo-lista">
+        <h2 id="titulo-lista">Horários cadastrados</h2>
+
+        {% if dias %}
+            {% for rotulo, lista in dias %}
+                <div class="dia">
+                    <h3>{{ rotulo }}</h3>
+
+                    <ul class="solicitacoes">
+                        {% for h in lista %}
+                            <li class="horario-item">
+                                <div class="horario-info">
+                                    <span class="vaga-hora">{{ h.hora_inicio|time:"H:i" }} às {{ h.hora_fim|time:"H:i" }}</span>
+                                    {% if h.marcados %}
+                                        <span class="solicitacao-meta">{{ h.marcados }} atendimento{{ h.marcados|pluralize }} marcado{{ h.marcados|pluralize }}</span>
+                                    {% endif %}
+                                </div>
+
+                                {% if h.marcados %}
+                                    <a class="botao botao-secundario" href="{% url 'monitor_painel' %}">Ver atendimentos</a>
+                                {% else %}
+                                    <details class="cancelar">
+                                        <summary>
+                                            <span class="botao botao-secundario">
+                                                <span class="rotulo-abrir">Remover</span>
+                                                <span class="rotulo-fechar">Voltar</span>
+                                            </span>
+                                        </summary>
+                                        <form method="post" action="{% url 'monitor_horario_remover' h.id %}">
+                                            {% csrf_token %}
+                                            <p>Remover este horário? Os alunos deixam de poder solicitá-lo.</p>
+                                            <button type="submit" class="botao botao-perigo">Confirmar remoção</button>
+                                        </form>
+                                    </details>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="vazio">
+                <p>Você ainda não cadastrou nenhum horário.</p>
+                <p>Use o formulário acima para começar.</p>
+            </div>
+        {% endif %}
+    </section>
+
+{% endblock %}

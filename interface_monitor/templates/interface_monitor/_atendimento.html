@@ -1,0 +1,41 @@
+{# uma linha da lista de atendimentos; "acoes" mostra ou esconde o botão de remover #}
+<li class="solicitacao-item">
+    <div class="solicitacao-quando">
+        <strong>{{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}</strong>
+        {% if s.em_andamento %}
+            {% include 'interface_aluno/_estado.html' with estado='em_atendimento' %}
+        {% endif %}
+    </div>
+
+    <div class="solicitacao-dados">
+        <span class="solicitacao-monitor">{{ s.aluno.nome }}</span>
+        <span>{{ s.assunto }}</span>
+        <span class="solicitacao-meta">
+            <span class="etiqueta">{{ s.get_formato_display }}</span>
+            <span class="etiqueta">{{ s.get_participantes_display }}</span>
+            &middot; matrícula {{ s.aluno.matricula }}
+        </span>
+    </div>
+
+    {% if acoes %}
+        <div>
+            {% if s.pode_remover %}
+                <details class="cancelar">
+                    <summary>
+                        <span class="botao botao-secundario">
+                            <span class="rotulo-abrir">Remover</span>
+                            <span class="rotulo-fechar">Voltar</span>
+                        </span>
+                    </summary>
+                    <form method="post" action="{% url 'monitor_atendimento_remover' s.id %}">
+                        {% csrf_token %}
+                        <p>Remover o atendimento de {{ s.aluno.nome }}? O horário volta a ficar livre para os alunos.</p>
+                        <button type="submit" class="botao botao-perigo">Confirmar remoção</button>
+                    </form>
+                </details>
+            {% else %}
+                <span class="solicitacao-meta">Já começou</span>
+            {% endif %}
+        </div>
+    {% endif %}
+</li>
