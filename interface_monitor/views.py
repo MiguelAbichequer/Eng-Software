@@ -1,21 +1,26 @@
 from collections import Counter
-from datetime import time
+from datetime import time, timedelta
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.formats import date_format
 from django.views.decorators.http import require_POST
 
 from interface_aluno.disponibilidade import (
+    DISPONIVEL, INDISPONIVEL,
     agora_local, datas_ocupadas, ja_comecou, ja_terminou, pode_cancelar, resumir_monitor,
 )
-from monitor.models import DiasSemana, Horario, Solicitacao
+from monitor.models import Disciplina, DiasSemana, Horario, Monitor, Solicitacao
 
 from .decorators import monitor_logado
 
 #quantos atendimentos passados aparecem no histórico
 LIMITE_HISTORICO = 20
+
+#por quanto tempo (em minutos) o monitor pode manter um status manual
+DURACOES_STATUS = (30, 60, 120)
 
 
 def _ordem(solicitacao):
@@ -76,6 +81,56 @@ def painel(request):
         'proximas': proximas,
         'anteriores': anteriores[:LIMITE_HISTORICO],
     })
+
+
+@monitor_logado
+@require_POST
+def alterar_status(request):
+    """O monitor sobrepõe, por tempo limitado, o estado calculado pelos horários."""
+    monitor = request.monitor
+    escolha = request.POST.get('status', '')
+
+    if escolha == 'automatico':
+        Monitor.objects.filter(pk=monitor.pk).update(status_manual='', status_manual_ate=None)
+        messages.success(request, 'Pronto: seu status voltou a seguir os seus horários.')
+        return redirect('monitor_painel')
+
+    if escolha not in (DISPONIVEL, INDISPONIVEL):
+        messages.error(request, 'Escolha um status válido.')
+        return redirect('monitor_painel')
+    try:
+        minutos = int(request.POST.get('duracao', ''))
+    except ValueError:
+        minutos = None
+    if minutos not in DURACOES_STATUS:
+        messages.error(request, 'Escolha por quanto tempo o status vale.')
+        return redirect('monitor_painel')
+
+    agora = agora_local()
+
+    #"disponível" só muda alguma coisa fora do horário de atendimento: dentro dele o monitor
+    #já aparece como disponível (ou em atendimento, se um aluno solicitou o horário)
+    if escolha == DISPONIVEL:
+        ocupados = datas_ocupadas([monitor], agora.date())
+        if resumir_monitor(monitor, ocupados, agora).estado_automatico != INDISPONIVEL:
+            messages.error(
+                request,
+                'Você está dentro de um horário de atendimento, então já aparece como disponível '
+                'ou em atendimento. Se você tinha se marcado como indisponível, use "Voltar ao automático".',
+            )
+            return redirect('monitor_painel')
+
+    ate = agora + timedelta(minutes=minutos)
+    monitor.status_manual = escolha
+    monitor.status_manual_ate = ate
+    monitor.save(update_fields=['status_manual', 'status_manual_ate'])
+
+    rotulo = 'disponível' if escolha == DISPONIVEL else 'indisponível'
+    messages.success(
+        request,
+        f'Você agora aparece como {rotulo} até {ate:%H:%M}. Depois disso, o status volta a seguir os seus horários.',
+    )
+    return redirect('monitor_painel')
 
 
 @monitor_logado
@@ -188,3 +243,74 @@ def remover_horario(request, horario_id):
     horario.delete()
     messages.success(request, f'Horário removido: {descricao}.')
     return redirect('monitor_horarios')
+
+
+@monitor_logado
+def disciplinas(request):
+    """As disciplinas em que o monitor atende: escolher entre as que existem ou cadastrar uma nova."""
+    return render(request, 'interface_monitor/disciplinas.html', {
+        'monitor': request.monitor,
+        'todas': Disciplina.objects.order_by('nome'),
+        'marcadas': set(request.monitor.disciplinas.values_list('id', flat=True)),
+    })
+
+
+@monitor_logado
+@require_POST
+def salvar_disciplinas(request):
+    """Grava a lista marcada. Desmarcar só tira a disciplina do monitor, ela continua existindo."""
+    ids = [int(valor) for valor in request.POST.getlist('disciplinas') if valor.isdigit()]
+    #filtrar pelo banco ignora ids que não existem
+    escolhidas = Disciplina.objects.filter(pk__in=ids)
+    request.monitor.disciplinas.set(escolhidas)
+
+    total = escolhidas.count()
+    if total:
+        messages.success(request, f'Disciplinas salvas: você atende em {total}.')
+    else:
+        messages.success(request, 'Disciplinas salvas. Você não está associado a nenhuma disciplina.')
+    return redirect('monitor_disciplinas')
+
+
+@monitor_logado
+@require_POST
+def nova_disciplina(request):
+    """Cadastra uma disciplina que ainda não existe e já a associa ao monitor."""
+    codigo = request.POST.get('codigo', '').strip().upper()
+    nome = ' '.join(request.POST.get('nome', '').split())  #tira espaços sobrando
+
+    if not codigo or not nome:
+        messages.error(request, 'Informe o código e o nome da disciplina.')
+        return redirect('monitor_disciplinas')
+    if len(codigo) > 20:
+        messages.error(request, 'O código pode ter no máximo 20 caracteres.')
+        return redirect('monitor_disciplinas')
+    if len(nome) > 100:
+        messages.error(request, 'O nome pode ter no máximo 100 caracteres.')
+        return redirect('monitor_disciplinas')
+
+    #o código é único: se já existe (mesmo escrito com outras maiúsculas), usa a que está lá
+    #em vez de criar outra ou trocar o nome que outros monitores já enxergam
+    existente = Disciplina.objects.filter(codigo__iexact=codigo).first()
+    if existente is None:
+        try:
+            with transaction.atomic():
+                existente = Disciplina.objects.create(codigo=codigo, nome=nome)
+            criada = True
+        except IntegrityError:
+            #outra pessoa cadastrou o mesmo código um instante antes
+            existente = Disciplina.objects.get(codigo__iexact=codigo)
+            criada = False
+    else:
+        criada = False
+
+    request.monitor.disciplinas.add(existente)
+    if criada:
+        messages.success(request, f'Disciplina cadastrada e adicionada às suas: {existente.nome}.')
+    else:
+        messages.success(
+            request,
+            f'Já existia uma disciplina com o código {existente.codigo} ("{existente.nome}"). '
+            'Ela foi adicionada às suas disciplinas.',
+        )
+    return redirect('monitor_disciplinas')

@@ -1,7 +1,7 @@
 from django.contrib import admin
+from django.contrib.auth.hashers import make_password
 
 from .models import Disciplina, Horario, Monitor, Solicitacao
-from django.contrib.auth.hashers import make_password
 
 
 class HorarioInline(admin.TabularInline):
@@ -21,6 +21,7 @@ class MonitorAdmin(admin.ModelAdmin):
     search_fields = ['nome', 'matricula']
     filter_horizontal = ['disciplinas']
     inlines = [HorarioInline]
+
     #a senha digitada no admin é guardada com hash, como no cadastro
     #(para monitores já existentes: digite uma senha nova no campo e salve)
     def save_model(self, request, obj, form, change):

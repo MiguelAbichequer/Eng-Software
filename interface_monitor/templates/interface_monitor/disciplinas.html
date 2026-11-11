@@ -1,0 +1,60 @@
+{% extends 'interface_monitor/base.html' %}
+
+{% block titulo %}Disciplinas{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Disciplinas</h1>
+    <p class="subtitulo">As disciplinas em que você atende. Os alunos usam isso para encontrar você.</p>
+
+    <section aria-labelledby="titulo-minhas">
+        <h2 id="titulo-minhas" class="titulo-primeiro">Minhas disciplinas</h2>
+
+        {% if todas %}
+            <form method="post" action="{% url 'monitor_disciplinas_salvar' %}">
+                {% csrf_token %}
+
+                <ul class="opcoes">
+                    {% for d in todas %}
+                        <li>
+                            <label class="opcao">
+                                <input type="checkbox" name="disciplinas" value="{{ d.id }}" {% if d.id in marcadas %}checked{% endif %}>
+                                <span>{{ d.nome }}</span>
+                                <span class="solicitacao-meta">{{ d.codigo }}</span>
+                            </label>
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <button type="submit" class="botao">Salvar disciplinas</button>
+            </form>
+        {% else %}
+            <div class="vazio">
+                <p>Ainda não há nenhuma disciplina cadastrada no sistema.</p>
+                <p>Use o formulário abaixo para cadastrar a primeira.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="titulo-nova">
+        <h2 id="titulo-nova">Não encontrou a sua disciplina?</h2>
+        <p class="nota">Cadastre aqui. Ela já fica associada a você e passa a aparecer para os outros monitores e para os alunos.</p>
+
+        <form method="post" action="{% url 'monitor_disciplina_nova' %}" class="nova-disciplina">
+            {% csrf_token %}
+
+            <div class="campo">
+                <label for="codigo">Código</label>
+                <input type="text" id="codigo" name="codigo" maxlength="20" placeholder="Ex.: MAT01" required>
+            </div>
+
+            <div class="campo">
+                <label for="nome-disciplina">Nome</label>
+                <input type="text" id="nome-disciplina" name="nome" maxlength="100" placeholder="Ex.: Cálculo I" required>
+            </div>
+
+            <button type="submit" class="botao">Cadastrar e usar</button>
+        </form>
+    </section>
+
+{% endblock %}
