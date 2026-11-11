@@ -1,0 +1,47 @@
+{% extends 'inicio/base_publica.html' %}
+
+{# Mesmo formulário para aluno e monitor: a view (inicio/cadastro.py) manda papel = 'aluno' ou 'monitor'. #}
+
+{% block titulo %}Cadastro de {{ papel }}{% endblock %}
+
+{% block conteudo %}
+
+    <a class="voltar" href="{% url 'home' %}">&larr; Voltar para o login</a>
+
+    <h1>Cadastro de {{ papel }}</h1>
+    <p class="subtitulo">
+        {% if papel == 'monitor' %}
+            Depois de entrar, você cadastra suas disciplinas e seus horários de atendimento no seu painel.
+        {% else %}
+            Com o cadastro, você reserva horários com os monitores e acompanha suas solicitações.
+        {% endif %}
+    </p>
+
+    <form method="post" class="cartao">
+        {% csrf_token %}
+
+        {% if erro %}
+            <p class="aviso aviso-error" role="alert">{{ erro }}</p>
+        {% endif %}
+
+        <div class="campo">
+            <label for="matricula">Matrícula</label>
+            <input type="text" id="matricula" name="matricula" value="{{ dados.matricula }}" maxlength="20" autocomplete="username" required>
+        </div>
+
+        <div class="campo">
+            <label for="nome">Nome completo</label>
+            <input type="text" id="nome" name="nome" value="{{ dados.nome }}" maxlength="100" autocomplete="name" required>
+        </div>
+
+        <div class="campo">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" autocomplete="new-password" required>
+        </div>
+
+        <button type="submit" class="botao botao-largo">Cadastrar</button>
+    </form>
+
+    <p class="cadastro-rodape">Já tem cadastro? <a href="{% url 'home' %}{% if papel == 'monitor' %}?tipo=monitor{% endif %}">Entrar</a></p>
+
+{% endblock %}

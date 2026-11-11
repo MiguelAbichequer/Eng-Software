@@ -126,3 +126,102 @@ class MinhasSolicitacoesTests(TestCase):
         s = self.pedido(self.tarde_h)
         self.assertEqual(self.client.get(self.url_cancelar(s)).status_code, 405)
         self.assertTrue(Solicitacao.objects.filter(pk=s.pk).exists())
+
+
+@patch('interface_aluno.views.agora_local', lambda: AGORA)
+class VariosAlunosNoMesmoHorarioTests(TestCase):
+    """A monitoria é aberta: vários alunos podem reservar o mesmo horário na mesma data."""
+
+    def setUp(self):
+        self.ana = Aluno.objects.create(matricula='a1', nome='Ana')
+        self.bruno = Aluno.objects.create(matricula='a2', nome='Bruno')
+        self.monitor = Monitor.objects.create(matricula='m1', nome='Carla')
+        #quarta 10:00-11:00 (acontecendo agora) e quarta 14:00-15:00 (mais tarde hoje)
+        self.agora_h = Horario.objects.create(monitor=self.monitor, dia_semana=QUARTA, hora_inicio=time(10), hora_fim=time(11))
+        self.tarde_h = Horario.objects.create(monitor=self.monitor, dia_semana=QUARTA, hora_inicio=time(14), hora_fim=time(15))
+
+    def logar(self, aluno):
+        sessao = self.client.session
+        sessao['aluno_id'] = aluno.id
+        sessao.save()
+
+    def solicitar(self, horario, data=HOJE):
+        return self.client.post(reverse('solicitar_horario', args=[horario.id]), {
+            'data': data.isoformat(), 'assunto': 'Integrais',
+            'formato': 'presencial', 'participantes': 'individual',
+        }, follow=True)
+
+    def pagina_do_monitor(self):
+        return self.client.get(reverse('monitor_detalhe', args=[self.monitor.id]))
+
+    def vaga(self, resposta, horario, data=HOJE):
+        return next(v for v in resposta.context['vagas'] if v.horario == horario and v.data == data)
+
+    def test_dois_alunos_reservam_o_mesmo_horario(self):
+        self.logar(self.ana)
+        self.solicitar(self.tarde_h)
+        self.logar(self.bruno)
+        r = self.solicitar(self.tarde_h)
+
+        self.assertContains(r, 'Horário solicitado')
+        alunos = set(Solicitacao.objects.filter(horario=self.tarde_h, data=HOJE).values_list('aluno__nome', flat=True))
+        self.assertEqual(alunos, {'Ana', 'Bruno'})
+
+    def test_o_mesmo_aluno_nao_reserva_duas_vezes(self):
+        self.logar(self.ana)
+        self.solicitar(self.tarde_h)
+        r = self.solicitar(self.tarde_h)
+
+        self.assertContains(r, 'Você já solicitou esse horário nessa data')
+        self.assertEqual(Solicitacao.objects.count(), 1)
+
+    def test_o_banco_tambem_impede_o_mesmo_aluno_duas_vezes(self):
+        from django.db import IntegrityError, transaction
+        dados = dict(aluno=self.ana, horario=self.tarde_h, data=HOJE, assunto='x', formato='online', participantes='individual')
+        Solicitacao.objects.create(**dados)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Solicitacao.objects.create(**dados)
+
+    def test_horario_reservado_continua_aparecendo_com_a_contagem(self):
+        self.logar(self.ana)
+        self.solicitar(self.tarde_h)
+
+        #para a Ana: a vaga aparece como dela, sem formulário
+        r = self.pagina_do_monitor()
+        vaga = self.vaga(r, self.tarde_h)
+        self.assertTrue(vaga.minha)
+        self.assertEqual(vaga.inscritos, 1)
+        self.assertContains(r, 'Você já reservou')
+
+        #para o Bruno: a mesma vaga, com o aviso de quantos já reservaram e o formulário
+        self.logar(self.bruno)
+        r = self.pagina_do_monitor()
+        vaga = self.vaga(r, self.tarde_h)
+        self.assertFalse(vaga.minha)
+        self.assertContains(r, '1 aluno já reservou')
+        self.assertNotContains(r, 'Você já reservou')
+
+    def test_em_atendimento_outro_aluno_ainda_pode_entrar_no_horario_de_agora(self):
+        self.logar(self.ana)
+        self.solicitar(self.agora_h)
+
+        self.logar(self.bruno)
+        r = self.pagina_do_monitor()
+        self.assertEqual(r.context['resumo'].estado, 'em_atendimento')
+        self.assertEqual(r.context['resumo'].inscritos_atual, 1)
+        self.assertContains(r, 'Você ainda pode entrar neste horário')
+
+        r = self.solicitar(self.agora_h)
+        self.assertContains(r, 'Horário solicitado')
+        self.assertEqual(Solicitacao.objects.filter(horario=self.agora_h).count(), 2)
+
+    def test_cancelar_tira_so_o_proprio_aluno(self):
+        self.logar(self.ana)
+        self.solicitar(self.tarde_h)
+        self.logar(self.bruno)
+        self.solicitar(self.tarde_h)
+
+        do_bruno = Solicitacao.objects.get(aluno=self.bruno)
+        self.client.post(reverse('cancelar_solicitacao', args=[do_bruno.id]))
+
+        self.assertEqual(list(Solicitacao.objects.values_list('aluno__nome', flat=True)), ['Ana'])

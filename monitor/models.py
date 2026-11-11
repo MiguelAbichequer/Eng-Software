@@ -102,7 +102,11 @@ class Solicitacao(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['horario', 'data'], name='uma_solicitacao_por_horario_e_data'),
+            #vários alunos podem reservar o mesmo horário na mesma data (a monitoria é um
+            #encontro aberto), mas o mesmo aluno não reserva o mesmo horário duas vezes
+            models.UniqueConstraint(
+                fields=['aluno', 'horario', 'data'], name='uma_solicitacao_por_aluno_horario_e_data',
+            ),
         ]
 
     def __str__(self):

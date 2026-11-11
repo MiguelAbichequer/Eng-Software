@@ -1,20 +1,9 @@
-from django.contrib.auth.hashers import make_password
-from django.shortcuts import render
+from inicio.cadastro import cadastrar
+
 from .models import Monitor
 
 
 def cadastro(request):
-    if request.method == 'POST':
-        matricula = request.POST['matricula']
-        nome = request.POST['nome']
-        senha = request.POST['senha']
-
-        monitor = Monitor(
-            matricula=matricula,
-            nome=nome,
-            senha=make_password(senha)
-        )
-
-        monitor.save()
-
-    return render(request, 'monitor/cadastro.html')
+    #a regra do cadastro é a mesma do aluno: fica em inicio/cadastro.py
+    #as disciplinas e os horários o monitor cadastra depois, no painel dele
+    return cadastrar(request, Monitor, 'monitor')

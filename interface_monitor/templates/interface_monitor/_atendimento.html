@@ -29,7 +29,7 @@
                     </summary>
                     <form method="post" action="{% url 'monitor_atendimento_remover' s.id %}">
                         {% csrf_token %}
-                        <p>Remover o atendimento de {{ s.aluno.nome }}? O horário volta a ficar livre para os alunos.</p>
+                        <p>Remover o atendimento de {{ s.aluno.nome }}? O aluno deixa de estar inscrito nesse horário.</p>
                         <button type="submit" class="botao botao-perigo">Confirmar remoção</button>
                     </form>
                 </details>

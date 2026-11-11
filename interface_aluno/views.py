@@ -73,11 +73,15 @@ def monitor_detalhe(request, monitor_id):
     ocupados = datas_ocupadas([monitor], agora.date())
     resumo = resumir_monitor(monitor, ocupados, agora)
 
-    #se o horário de agora está ocupado, descobre se foi o próprio aluno que solicitou
+    #o aluno está entre os que reservaram o horário que está acontecendo agora?
     atual_e_meu = bool(
         resumo.horario_atual
-        and ocupados.get((resumo.horario_atual.id, agora.date())) == request.aluno.id
+        and request.aluno.id in ocupados.get((resumo.horario_atual.id, agora.date()), ())
     )
+
+    #marca as vagas que este aluno já reservou, para a tela não oferecer reservar de novo
+    for vaga in resumo.vagas:
+        vaga.minha = request.aluno.id in ocupados.get((vaga.horario.id, vaga.data), ())
 
     #solicitações que este aluno já fez com este monitor e ainda não aconteceram
     minhas = [
@@ -135,6 +139,12 @@ def solicitar_horario(request, horario_id):
         messages.error(request, 'Essa data não está mais disponível para solicitação.')
         return voltar
 
+    #vários alunos podem reservar o mesmo horário, mas cada aluno só uma vez
+    ja_reservou = 'Você já solicitou esse horário nessa data. Veja em Minhas solicitações.'
+    if Solicitacao.objects.filter(aluno=request.aluno, horario=horario, data=data).exists():
+        messages.error(request, ja_reservou)
+        return voltar
+
     try:
         with transaction.atomic():
             Solicitacao.objects.create(
@@ -142,8 +152,9 @@ def solicitar_horario(request, horario_id):
                 assunto=assunto, formato=formato, participantes=participantes,
             )
     except IntegrityError:
-        #outro aluno reservou o mesmo horário um instante antes
-        messages.error(request, 'Esse horário acabou de ser solicitado por outra pessoa. Escolha outro.')
+        #o mesmo aluno enviou o formulário duas vezes ao mesmo tempo (clique duplo):
+        #a restrição do banco segura a segunda
+        messages.error(request, ja_reservou)
         return voltar
 
     messages.success(
@@ -181,7 +192,7 @@ def minhas_solicitacoes(request):
 @aluno_logado
 @require_POST
 def cancelar_solicitacao(request, solicitacao_id):
-    """Cancela uma solicitação do próprio aluno. O horário volta a ficar livre para os outros."""
+    """Cancela uma solicitação do próprio aluno."""
     #filtrar por aluno garante que ninguém cancele a solicitação de outra pessoa (vira 404)
     solicitacao = get_object_or_404(
         Solicitacao.objects.select_related('horario__monitor'),

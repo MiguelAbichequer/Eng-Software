@@ -94,41 +94,25 @@
             <p class="nota">Só aparecem os dias com pelo menos uma solicitação.</p>
         </section>
 
-        <div class="colunas">
-            <section aria-labelledby="titulo-horarios">
-                <h2 id="titulo-horarios">Horários mais reservados</h2>
-                <table class="tabela">
-                    <thead>
-                        <tr><th scope="col">Horário</th><th scope="col">Monitor</th><th scope="col" class="num">Reservas</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for h in horarios %}
-                            <tr>
-                                <td>{{ h.dia }}, {{ h.horario__hora_inicio|time:"H:i" }}&ndash;{{ h.horario__hora_fim|time:"H:i" }}</td>
-                                <td>{{ h.horario__monitor__nome }}</td>
-                                <td class="num">{{ h.total }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
+        <section aria-labelledby="titulo-horarios">
+            <h2 id="titulo-horarios">Horários mais reservados</h2>
+            <table class="tabela">
+                <thead>
+                    <tr><th scope="col">Horário</th><th scope="col">Monitor</th><th scope="col" class="num">Reservas</th></tr>
+                </thead>
+                <tbody>
+                    {% for h in horarios %}
+                        <tr>
+                            <td>{{ h.dia }}, {{ h.horario__hora_inicio|time:"H:i" }}&ndash;{{ h.horario__hora_fim|time:"H:i" }}</td>
+                            <td>{{ h.horario__monitor__nome }}</td>
+                            <td class="num">{{ h.total }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
 
-            <section aria-labelledby="titulo-assuntos">
-                <h2 id="titulo-assuntos">Assuntos mais pedidos</h2>
-                <table class="tabela">
-                    <thead>
-                        <tr><th scope="col">Assunto</th><th scope="col" class="num">Pedidos</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for a in assuntos %}
-                            <tr><td>{{ a.assunto }}</td><td class="num">{{ a.total }}</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
-        </div>
-
-        {% if not monitor_escolhido %}
+    {% if not monitor_escolhido %}
             <section aria-labelledby="titulo-monitores">
                 <h2 id="titulo-monitores">Por monitor</h2>
                 <table class="tabela">

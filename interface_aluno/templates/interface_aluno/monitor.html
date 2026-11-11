@@ -25,13 +25,17 @@
                     Atende até {{ resumo.horario_atual.hora_fim|time:"H:i" }}. Você pode solicitar este horário abaixo.
                 {% endif %}
             {% elif resumo.estado == 'em_atendimento' %}
-                {% if atual_e_meu %}Você solicitou o horário de agora (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}).{% else %}O horário de agora (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}) já foi solicitado por outra pessoa.{% endif %}
+                {% if atual_e_meu %}
+                    Você está neste atendimento (até {{ resumo.horario_atual.hora_fim|time:"H:i" }}){% if resumo.inscritos_atual > 1 %}, junto com mais {{ resumo.inscritos_atual|add:"-1" }} aluno{{ resumo.inscritos_atual|add:"-1"|pluralize }}{% endif %}.
+                {% else %}
+                    Atendendo {{ resumo.inscritos_atual }} aluno{{ resumo.inscritos_atual|pluralize }} até {{ resumo.horario_atual.hora_fim|time:"H:i" }}. Você ainda pode entrar neste horário abaixo.
+                {% endif %}
             {% elif resumo.manual %}
-                Este monitor marcou que está indisponível até {{ resumo.manual_ate|time:"H:i" }}. Você ainda pode solicitar os horários livres abaixo.
+                Este monitor marcou que está indisponível até {{ resumo.manual_ate|time:"H:i" }}. Você ainda pode solicitar os horários abaixo.
             {% elif resumo.proxima_vaga %}
-                Próximo horário livre: {{ resumo.proxima_vaga.data|date:"l, d/m" }}, das {{ resumo.proxima_vaga.horario.hora_inicio|time:"H:i" }} às {{ resumo.proxima_vaga.horario.hora_fim|time:"H:i" }}.
+                Próximo horário: {{ resumo.proxima_vaga.data|date:"l, d/m" }}, das {{ resumo.proxima_vaga.horario.hora_inicio|time:"H:i" }} às {{ resumo.proxima_vaga.horario.hora_fim|time:"H:i" }}.
             {% else %}
-                Este monitor não tem horários livres no momento.
+                Este monitor não tem horários nas próximas semanas.
             {% endif %}
         </p>
     </section>
@@ -53,6 +57,7 @@
 
     <section aria-labelledby="titulo-horarios">
         <h2 id="titulo-horarios">Horários disponíveis</h2>
+        <p class="nota-horarios">Mais de um aluno pode reservar o mesmo horário: a monitoria é aberta a todos que se inscreverem.</p>
 
         {% if vagas %}
 
@@ -63,9 +68,18 @@
                     <h3>{{ dia.grouper|date:"l, d/m" }}</h3>
 
                     {% for vaga in dia.list %}
+                        {% if vaga.minha %}
+                            {# o aluno já reservou: mostra a vaga, mas sem formulário #}
+                            <div class="vaga vaga-minha">
+                                <span class="vaga-hora">{{ vaga.horario.hora_inicio|time:"H:i" }} às {{ vaga.horario.hora_fim|time:"H:i" }}</span>
+                                <span class="vaga-inscritos">{% if vaga.inscritos > 1 %}Você e mais {{ vaga.inscritos|add:"-1" }} aluno{{ vaga.inscritos|add:"-1"|pluralize }}{% else %}Só você até agora{% endif %}</span>
+                                <a href="{% url 'minhas_solicitacoes' %}">Você já reservou</a>
+                            </div>
+                        {% else %}
                         <details class="vaga">
                             <summary>
                                 <span class="vaga-hora">{{ vaga.horario.hora_inicio|time:"H:i" }} às {{ vaga.horario.hora_fim|time:"H:i" }}</span>
+                                {% if vaga.inscritos %}<span class="vaga-inscritos">{{ vaga.inscritos }} aluno{{ vaga.inscritos|pluralize }} já reserv{{ vaga.inscritos|pluralize:"ou,aram" }}</span>{% endif %}
                                 <span class="botao botao-secundario">
                                     <span class="rotulo-abrir">Solicitar</span>
                                     <span class="rotulo-fechar">Fechar</span>
@@ -98,13 +112,14 @@
                                 <button type="submit" class="botao">Confirmar solicitação</button>
                             </form>
                         </details>
+                        {% endif %}
                     {% endfor %}
                 </div>
             {% endfor %}
 
         {% else %}
             <div class="vazio">
-                <p>Este monitor não tem horários livres nas próximas semanas.</p>
+                <p>Este monitor não tem horários nas próximas semanas.</p>
                 <p><a href="{% url 'painel' %}{% if querystring %}?{{ querystring }}{% endif %}">Voltar</a> e escolha outro monitor.</p>
             </div>
         {% endif %}

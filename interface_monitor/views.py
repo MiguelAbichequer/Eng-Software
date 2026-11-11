@@ -136,7 +136,7 @@ def alterar_status(request):
 @monitor_logado
 @require_POST
 def remover_atendimento(request, solicitacao_id):
-    """Remove uma solicitação feita com este monitor. O horário volta a ficar livre para os alunos."""
+    """Remove uma solicitação feita com este monitor."""
     #filtrar por monitor garante que ninguém remova o atendimento de outro monitor (vira 404)
     solicitacao = get_object_or_404(
         Solicitacao.objects.select_related('horario', 'aluno'),
@@ -153,7 +153,7 @@ def remover_atendimento(request, solicitacao_id):
         f'das {horario.hora_inicio:%H:%M} às {horario.hora_fim:%H:%M}, com {solicitacao.aluno.nome}'
     )
     solicitacao.delete()
-    messages.success(request, f'Atendimento removido: {resumo}. O horário voltou a ficar livre.')
+    messages.success(request, f'Atendimento removido: {resumo}.')
     return redirect('monitor_painel')
 
 

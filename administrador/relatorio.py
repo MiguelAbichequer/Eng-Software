@@ -6,7 +6,6 @@ por período e, opcionalmente, por monitor.
 """
 
 import calendar
-from collections import Counter
 from dataclasses import dataclass
 from datetime import date
 
@@ -15,7 +14,7 @@ from django.utils import timezone
 
 from monitor.models import DiasSemana, Solicitacao
 
-#quantas linhas aparecem nas listas de "mais reservados" e "mais pedidos"
+#quantas linhas aparecem na lista de "horários mais reservados"
 LIMITE_RANKING = 10
 
 
@@ -117,24 +116,6 @@ def horarios_mais_reservados(qs):
     return linhas
 
 
-def assuntos_mais_pedidos(qs):
-    """
-    Assuntos mais frequentes. "Integrais", "integrais" e " Integrais " contam como o mesmo
-    assunto; na tela aparece a grafia mais usada.
-    """
-    contagem = Counter()
-    grafias = {}
-    for assunto in qs.values_list('assunto', flat=True):
-        chave = ' '.join(assunto.split()).casefold()
-        contagem[chave] += 1
-        grafias.setdefault(chave, Counter())[assunto.strip()] += 1
-
-    return [
-        {'assunto': grafias[chave].most_common(1)[0][0], 'total': total}
-        for chave, total in contagem.most_common(LIMITE_RANKING)
-    ]
-
-
 def por_monitor(qs):
     """Solicitações e alunos distintos de cada monitor no período."""
     return list(
@@ -152,6 +133,5 @@ def montar(periodo, monitor_id=None, agora=None):
         'resumo': resumo(qs, agora),
         'por_dia': por_dia(qs),
         'horarios': horarios_mais_reservados(qs),
-        'assuntos': assuntos_mais_pedidos(qs),
         'monitores': por_monitor(qs),
     }

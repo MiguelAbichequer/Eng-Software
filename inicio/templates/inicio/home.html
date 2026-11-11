@@ -1,52 +1,45 @@
-{% load static %}
+{% extends 'inicio/base_publica.html' %}
 
-<!DOCTYPE html>
-<html lang="pt-br">
+{% block titulo %}Entrar{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Sistema de Monitoria</title>
+{% block conteudo %}
 
-<link rel="stylesheet" href="{% static 'css/inicio/button.css' %}">
-</head>
+    <h1>Entrar</h1>
+    <p class="subtitulo">Veja quem está disponível agora e reserve um horário com um monitor.</p>
 
-<body>
+    <form method="post" class="cartao">
+        {% csrf_token %}
 
-    <h1>Agendamento de Monitoria &#128197</h1>
+        {% if erro %}
+            <p class="aviso aviso-error" role="alert">{{ erro }}</p>
+        {% endif %}
 
-    <p>Entrar no Sistema</p>
-
-    <div class="text-box">
-        <form method="post">
-            {% csrf_token %}
-            {% if erro %}
-                <p>{{ erro }}</p>
-             {% endif %}
-
-            {% if mensagem %}
-                <p>{{ mensagem }}</p>
-            {% endif %}
-
-            <label>Entrar como:</label>
+        {# uma mesma pessoa pode ser aluno e monitor, com cadastros separados: por isso a escolha #}
+        <fieldset class="papeis">
+            <legend>Entrar como</legend>
             <label><input type="radio" name="tipo" value="aluno" {% if tipo != 'monitor' %}checked{% endif %}> Aluno</label>
             <label><input type="radio" name="tipo" value="monitor" {% if tipo == 'monitor' %}checked{% endif %}> Monitor</label>
-            <br><br>
-            <label for="username">Matrícula:</label>
-            <input type="text" id="username" name="username" required>
-            <br><br>
-            <label for="password">Senha:</label>
-            <input type="password" id="password" name="password" required>
-            <br><br>
-            <button type="submit">Entrar</button>
-        </form>
-    </div>
+        </fieldset>
 
-    <p>Ou cadastrar novo usuário:</p>
-    <div class ="text-box">
-        <a class="btn btn-white" href="/alunos/cadastro/">Aluno</a>
-        <a class="btn btn-white" href="/monitor/cadastro/">Monitor</a>
-    </div>
+        <div class="campo">
+            <label for="username">Matrícula</label>
+            <input type="text" id="username" name="username" value="{{ matricula }}" autocomplete="username" required>
+        </div>
 
-</body>
+        <div class="campo">
+            <label for="password">Senha</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
 
-</html>
+        <button type="submit" class="botao botao-largo">Entrar</button>
+    </form>
+
+    <section class="cadastro-chamada" aria-labelledby="titulo-cadastro">
+        <h2 id="titulo-cadastro">Ainda não tem cadastro?</h2>
+        <div class="cadastro-botoes">
+            <a class="botao botao-secundario" href="{% url 'cadastro_aluno' %}">Sou aluno</a>
+            <a class="botao botao-secundario" href="{% url 'cadastro_monitor' %}">Sou monitor</a>
+        </div>
+    </section>
+
+{% endblock %}

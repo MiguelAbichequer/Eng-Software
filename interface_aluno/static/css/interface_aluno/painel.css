@@ -264,6 +264,22 @@ select {
 .vaga[open] .rotulo-fechar { display: inline; }
 .vaga[open] summary { border-bottom: 1px solid var(--linha); }
 
+/* quantos alunos já reservaram: fica entre o horário e o botão */
+.vaga-inscritos { flex: 1; font-size: .9rem; color: var(--tinta-suave); }
+
+/* vaga que o próprio aluno já reservou: sem formulário, só o aviso e o link */
+.vaga-minha {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .6rem 1rem;
+    border-color: var(--verde);
+    background: var(--verde-fundo);
+}
+.vaga-minha a { font-weight: 600; white-space: nowrap; }
+
+.nota-horarios { margin: -.25rem 0 1rem; font-size: .9rem; color: var(--tinta-suave); }
+
 .solicitacao {
     display: flex;
     flex-direction: column;

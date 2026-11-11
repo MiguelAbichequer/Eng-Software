@@ -30,7 +30,7 @@ def _filtros(request):
 #(o superusuário criado com createsuperuser já é). Quem não está logado vai para o login do admin.
 @staff_member_required
 def relatorio_view(request):
-    """Relatório de atendimentos: resumo, por dia, horários, assuntos e monitores."""
+    """Relatório de atendimentos: resumo, por dia, horários e monitores."""
     periodo, monitor, erro = _filtros(request)
     dados = relatorio.montar(periodo, monitor.id if monitor else None)
 

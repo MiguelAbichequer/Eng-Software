@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+{# Esqueleto das telas abertas a todos (login e cadastros). #}
+{# Usa o mesmo CSS das telas do aluno (painel.css) para ter as mesmas cores, botões e campos, #}
+{# mais o inicio.css com o que é só destas telas (o cartão centralizado). #}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}Entrar{% endblock %} - Sistema de Monitoria</title>
+    <link rel="stylesheet" href="{% static 'css/interface_aluno/painel.css' %}">
+    <link rel="stylesheet" href="{% static 'css/inicio/inicio.css' %}">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="topo-conteudo">
+            <a class="topo-marca" href="{% url 'home' %}">Agendamento de Monitoria</a>
+        </div>
+    </header>
+
+    <main class="pagina pagina-publica">
+
+        {# confirmações como "Cadastro feito!" (messages.success no cadastro) #}
+        {% for mensagem in messages %}
+            <p class="aviso aviso-{{ mensagem.tags }}" role="status">{{ mensagem }}</p>
+        {% endfor %}
+
+        {% block conteudo %}{% endblock %}
+
+    </main>
+
+</body>
+
+</html>

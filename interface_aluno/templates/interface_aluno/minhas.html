@@ -48,7 +48,7 @@
                                 </summary>
                                 <form method="post" action="{% url 'cancelar_solicitacao' s.id %}">
                                     {% csrf_token %}
-                                    <p>O horário volta a ficar livre para outros alunos.</p>
+                                    <p>O monitor deixa de contar com você nesse horário.</p>
                                     <button type="submit" class="botao botao-perigo">Confirmar cancelamento</button>
                                 </form>
                             </details>

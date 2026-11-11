@@ -5,7 +5,7 @@
 {% block conteudo %}
 
     <h1>Monitores</h1>
-    <p class="subtitulo">Escolha um monitor para ver os horários livres e solicitar um atendimento.</p>
+    <p class="subtitulo">Escolha um monitor para ver os horários e solicitar um atendimento.</p>
 
     <form method="get" class="filtros">
         <div class="campo">
@@ -28,7 +28,7 @@
             <select id="filtro-disponibilidade" name="disponibilidade">
                 <option value="">Qualquer</option>
                 <option value="agora" {% if filtros.disponibilidade == 'agora' %}selected{% endif %}>Disponível agora</option>
-                <option value="livres" {% if filtros.disponibilidade == 'livres' %}selected{% endif %}>Com horários livres</option>
+                <option value="livres" {% if filtros.disponibilidade == 'livres' %}selected{% endif %}>Com horários nas próximas semanas</option>
             </select>
         </div>
 
@@ -66,9 +66,9 @@
                                 {% elif r.manual %}
                                     Indisponível até {{ r.manual_ate|time:"H:i" }}
                                 {% elif r.proxima_vaga %}
-                                    Próximo horário livre: {{ r.proxima_vaga.data|date:"D, d/m" }}, {{ r.proxima_vaga.horario.hora_inicio|time:"H:i" }}
+                                    Próximo horário: {{ r.proxima_vaga.data|date:"D, d/m" }}, {{ r.proxima_vaga.horario.hora_inicio|time:"H:i" }}
                                 {% else %}
-                                    Sem horários livres no momento
+                                    Sem horários nas próximas semanas
                                 {% endif %}
                             </span>
                         </span>
