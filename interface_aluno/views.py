@@ -35,16 +35,17 @@ def painel(request):
         monitores = monitores.filter(nome__icontains=nome)
     if disciplina_id.isdigit():
         monitores = monitores.filter(disciplinas__id=int(disciplina_id))
+    if disponibilidade == 'agora':
+        #o status é escolhido pelo monitor e fica no banco, então dá para filtrar na consulta
+        monitores = monitores.filter(status=DISPONIVEL)
     monitores = list(monitores.order_by('nome'))
 
     agora = agora_local()
     ocupados = datas_ocupadas(monitores, agora.date())
     resumos = [resumir_monitor(m, ocupados, agora) for m in monitores]
 
-    #a disponibilidade é calculada (não fica no banco), então este filtro é aplicado aqui
-    if disponibilidade == 'agora':
-        resumos = [r for r in resumos if r.estado == DISPONIVEL]
-    elif disponibilidade == 'livres':
+    #as vagas são calculadas (não ficam no banco), então este filtro é aplicado aqui
+    if disponibilidade == 'livres':
         resumos = [r for r in resumos if r.vagas]
 
     resumos.sort(key=lambda r: ORDEM_ESTADO[r.estado])  #sort é estável: mantém a ordem por nome
@@ -64,7 +65,7 @@ def painel(request):
 
 @aluno_logado
 def monitor_detalhe(request, monitor_id):
-    """Tela do monitor escolhido: disponibilidade atual e horários para solicitar."""
+    """Tela do monitor escolhido: status atual e horários para solicitar."""
     monitor = get_object_or_404(
         Monitor.objects.prefetch_related('disciplinas', 'horarios'), pk=monitor_id, expulso_em__isnull=True,
     )
@@ -72,12 +73,6 @@ def monitor_detalhe(request, monitor_id):
     agora = agora_local()
     ocupados = datas_ocupadas([monitor], agora.date())
     resumo = resumir_monitor(monitor, ocupados, agora)
-
-    #o aluno está entre os que reservaram o horário que está acontecendo agora?
-    atual_e_meu = bool(
-        resumo.horario_atual
-        and request.aluno.id in ocupados.get((resumo.horario_atual.id, agora.date()), ())
-    )
 
     #marca as vagas que este aluno já reservou, para a tela não oferecer reservar de novo
     for vaga in resumo.vagas:
@@ -95,7 +90,6 @@ def monitor_detalhe(request, monitor_id):
         'aluno': request.aluno,
         'monitor': monitor,
         'resumo': resumo,
-        'atual_e_meu': atual_e_meu,
         'vagas': resumo.vagas,
         'minhas': minhas,
         'formatos': Solicitacao.FORMATOS,

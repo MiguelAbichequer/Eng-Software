@@ -75,10 +75,9 @@ def expulsar(usuario, motivo, agora):
         usuario.motivo_expulsao = motivo
         campos = ['expulso_em', 'motivo_expulsao']
         if isinstance(usuario, Monitor):
-            #um status manual ("disponível até 15h") não faz sentido para quem foi expulso
-            usuario.status_manual = ''
-            usuario.status_manual_ate = None
-            campos += ['status_manual', 'status_manual_ate']
+            #quem foi expulso não está atendendo
+            usuario.status = Monitor.INDISPONIVEL
+            campos.append('status')
         usuario.save(update_fields=campos)
     return len(canceladas)
 

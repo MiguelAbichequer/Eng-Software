@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import time, timedelta
+from datetime import time
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -8,19 +8,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.formats import date_format
 from django.views.decorators.http import require_POST
 
-from interface_aluno.disponibilidade import (
-    DISPONIVEL, INDISPONIVEL,
-    agora_local, datas_ocupadas, ja_comecou, ja_terminou, pode_cancelar, resumir_monitor,
-)
+from interface_aluno.disponibilidade import agora_local, ja_comecou, ja_terminou, pode_cancelar
 from monitor.models import Disciplina, DiasSemana, Horario, Monitor, Solicitacao
 
 from .decorators import monitor_logado
 
 #quantos atendimentos passados aparecem no histórico
 LIMITE_HISTORICO = 20
-
-#por quanto tempo (em minutos) o monitor pode manter um status manual
-DURACOES_STATUS = (30, 60, 120)
 
 
 def _ordem(solicitacao):
@@ -41,13 +35,9 @@ def _marcados_por_horario(monitor, agora):
 
 @monitor_logado
 def painel(request):
-    """Tela principal do monitor: como os alunos o veem agora e os atendimentos marcados."""
+    """Tela principal do monitor: o seletor de status e os atendimentos marcados."""
     monitor = request.monitor
     agora = agora_local()
-
-    #o estado é calculado do mesmo jeito que na tela do aluno, então o monitor vê o que o aluno vê
-    ocupados = datas_ocupadas([monitor], agora.date())
-    resumo = resumir_monitor(monitor, ocupados, agora)
 
     todas = Solicitacao.objects.filter(horario__monitor=monitor).select_related('horario', 'aluno')
 
@@ -63,18 +53,13 @@ def painel(request):
     proximas.sort(key=_ordem)
     anteriores.sort(key=_ordem, reverse=True)  #mais recentes primeiro
 
-    #o atendimento de agora (se o horário de agora foi solicitado) e o que vem depois dele
-    atual = None
-    if resumo.horario_atual:
-        atual = next(
-            (s for s in proximas if s.horario_id == resumo.horario_atual.id and s.data == agora.date()),
-            None,
-        )
-    proximo = next((s for s in proximas if s is not atual), None)
+    #o atendimento marcado para agora (se houver) e o próximo que ainda não começou
+    atual = next((s for s in proximas if s.em_andamento), None)
+    proximo = next((s for s in proximas if not s.em_andamento), None)
 
     return render(request, 'interface_monitor/painel.html', {
         'monitor': monitor,
-        'resumo': resumo,
+        'opcoes_status': Monitor.STATUS,
         'atual': atual,
         'proximo': proximo,
         'tem_horarios': bool(monitor.horarios.all()),
@@ -86,50 +71,21 @@ def painel(request):
 @monitor_logado
 @require_POST
 def alterar_status(request):
-    """O monitor sobrepõe, por tempo limitado, o estado calculado pelos horários."""
-    monitor = request.monitor
+    """
+    O monitor escolhe o próprio status: disponível, em atendimento ou indisponível.
+
+    Vale até ele trocar de novo (ou clicar em Sair, que volta para indisponível).
+    Não depende dos horários cadastrados: ele pode estar disponível fora deles.
+    """
     escolha = request.POST.get('status', '')
-
-    if escolha == 'automatico':
-        Monitor.objects.filter(pk=monitor.pk).update(status_manual='', status_manual_ate=None)
-        messages.success(request, 'Pronto: seu status voltou a seguir os seus horários.')
-        return redirect('monitor_painel')
-
-    if escolha not in (DISPONIVEL, INDISPONIVEL):
+    rotulos = dict(Monitor.STATUS)
+    if escolha not in rotulos:
         messages.error(request, 'Escolha um status válido.')
         return redirect('monitor_painel')
-    try:
-        minutos = int(request.POST.get('duracao', ''))
-    except ValueError:
-        minutos = None
-    if minutos not in DURACOES_STATUS:
-        messages.error(request, 'Escolha por quanto tempo o status vale.')
-        return redirect('monitor_painel')
 
-    agora = agora_local()
-
-    #"disponível" só muda alguma coisa fora do horário de atendimento: dentro dele o monitor
-    #já aparece como disponível (ou em atendimento, se um aluno solicitou o horário)
-    if escolha == DISPONIVEL:
-        ocupados = datas_ocupadas([monitor], agora.date())
-        if resumir_monitor(monitor, ocupados, agora).estado_automatico != INDISPONIVEL:
-            messages.error(
-                request,
-                'Você está dentro de um horário de atendimento, então já aparece como disponível '
-                'ou em atendimento. Se você tinha se marcado como indisponível, use "Voltar ao automático".',
-            )
-            return redirect('monitor_painel')
-
-    ate = agora + timedelta(minutes=minutos)
-    monitor.status_manual = escolha
-    monitor.status_manual_ate = ate
-    monitor.save(update_fields=['status_manual', 'status_manual_ate'])
-
-    rotulo = 'disponível' if escolha == DISPONIVEL else 'indisponível'
-    messages.success(
-        request,
-        f'Você agora aparece como {rotulo} até {ate:%H:%M}. Depois disso, o status volta a seguir os seus horários.',
-    )
+    #update() grava só este campo, direto no banco
+    Monitor.objects.filter(pk=request.monitor.pk).update(status=escolha)
+    messages.success(request, f'Pronto: os alunos agora veem você como "{rotulos[escolha]}".')
     return redirect('monitor_painel')
 
 
@@ -147,10 +103,9 @@ def remover_atendimento(request, solicitacao_id):
         messages.error(request, 'Esse atendimento não pode mais ser removido, porque ele já começou.')
         return redirect('monitor_painel')
 
-    horario = solicitacao.horario
     resumo = (
         f'{date_format(solicitacao.data, "l, d/m")}, '
-        f'das {horario.hora_inicio:%H:%M} às {horario.hora_fim:%H:%M}, com {solicitacao.aluno.nome}'
+        f'das {solicitacao.horario.hora_inicio:%H:%M} às {solicitacao.horario.hora_fim:%H:%M}, com {solicitacao.aluno.nome}'
     )
     solicitacao.delete()
     messages.success(request, f'Atendimento removido: {resumo}.')

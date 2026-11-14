@@ -153,7 +153,7 @@ class FichaTests(BaseTeste):
         r = self.client.get(self.url('usuario', 'monitor', self.monitor))
         self.assertContains(r, 'Cálculo')
         self.assertContains(r, 'Quarta-feira, 10:00')
-        self.assertEqual(r.context['resumo'].estado, 'disponivel')
+        self.assertContains(r, 'Indisponível (escolhido pelo monitor)')
 
     def test_aviso_diz_quantos_atendimentos_serao_cancelados(self):
         self.pedido(self.tarde_h)
@@ -198,18 +198,17 @@ class ExpulsarTests(BaseTeste):
         self.expulsar('aluno', self.aluno)
         self.assertTrue(Solicitacao.objects.filter(pk=do_bruno.pk).exists())
 
-    def test_expulsar_monitor_cancela_os_atendimentos_futuros_que_ele_recebeu_e_o_status_manual(self):
+    def test_expulsar_monitor_cancela_os_atendimentos_futuros_que_ele_recebeu_e_fica_indisponivel(self):
         self.pedido(self.tarde_h, aluno=self.aluno)
         self.pedido(self.tarde_h, data=HOJE + timedelta(weeks=1), aluno=self.outro_aluno)
-        self.monitor.status_manual = 'disponivel'
-        self.monitor.status_manual_ate = AGORA + timedelta(hours=1)
+        self.monitor.status = 'disponivel'
         self.monitor.save()
 
         self.expulsar('monitor', self.monitor)
 
         self.monitor.refresh_from_db()
         self.assertTrue(self.monitor.expulso)
-        self.assertEqual(self.monitor.status_manual, '')
+        self.assertEqual(self.monitor.status, 'indisponivel')
         self.assertFalse(Solicitacao.objects.exists())
 
     def test_expulsar_de_novo_nao_muda_a_data(self):

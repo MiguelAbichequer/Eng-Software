@@ -31,12 +31,15 @@ class Monitor(models.Model): #representa uma tabela no banco de dados
     senha = models.CharField(max_length=128, blank=True) #guardada com hash (make_password), igual ao aluno
     disciplinas = models.ManyToManyField(Disciplina, blank=True, related_name='monitores')
 
-    #status que o monitor define à mão, por tempo limitado ("estou aqui fora do horário",
-    #"preciso me ausentar"). Só vale enquanto status_manual_ate estiver no futuro: depois disso
-    #é ignorado e o estado volta a ser calculado pelos horários (não precisa de tarefa de limpeza)
-    STATUS_MANUAL = [('disponivel', 'Disponível'), ('indisponivel', 'Indisponível')]
-    status_manual = models.CharField(max_length=12, choices=STATUS_MANUAL, blank=True)
-    status_manual_ate = models.DateTimeField(null=True, blank=True)
+    #o status é o monitor quem escolhe, no painel dele: quando chega um aluno ele marca
+    #"em atendimento", quando o aluno sai volta para "disponível", e quando precisa se ausentar
+    #marca "indisponível". Não depende dos horários cadastrados. Ao clicar em Sair, volta
+    #sozinho para "indisponível" (inicio/views.py), para ele não ficar disponível sem estar lá.
+    DISPONIVEL = 'disponivel'
+    EM_ATENDIMENTO = 'em_atendimento'
+    INDISPONIVEL = 'indisponivel'
+    STATUS = [(DISPONIVEL, 'Disponível'), (EM_ATENDIMENTO, 'Em atendimento'), (INDISPONIVEL, 'Indisponível')]
+    status = models.CharField(max_length=14, choices=STATUS, default=INDISPONIVEL)
 
     #expulsão feita pelo administrador. Não apaga a conta (o histórico continua no relatório):
     #só impede o login e esconde a pessoa do sistema. Vazio = conta ativa.

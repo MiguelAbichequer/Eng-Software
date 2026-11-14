@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from interface_aluno.disponibilidade import agora_local, datas_ocupadas, resumir_monitor
+from interface_aluno.disponibilidade import agora_local
 from monitor.models import Monitor
 
 from . import relatorio, usuarios
@@ -126,9 +126,6 @@ def usuario_view(request, tipo, usuario_id):
         'limite_historico': usuarios.LIMITE_HISTORICO,
     }
     if tipo == 'monitor':
-        #o estado atual é calculado do mesmo jeito que na tela do aluno
-        ocupados = datas_ocupadas([usuario], agora.date())
-        contexto['resumo'] = resumir_monitor(usuario, ocupados, agora)
         contexto['horarios'] = list(usuario.horarios.all())
         contexto['disciplinas'] = list(usuario.disciplinas.order_by('nome'))
     return render(request, 'administrador/usuario.html', contexto)

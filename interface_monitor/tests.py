@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from unittest.mock import patch
 
 from django.contrib import admin
@@ -133,31 +133,23 @@ class AcessoTests(BaseTeste):
 
 
 class PainelTests(BaseTeste):
-    def test_horario_de_agora_sem_pedido_aparece_como_disponivel(self):
-        self.horario()
+    def test_atendimento_de_agora_aparece_com_quem_e_o_assunto(self):
+        self.pedido(self.horario(), assunto='Séries de Taylor')  #10:00-11:00, agora são 10:30
+        Monitor.objects.filter(pk=self.monitor.pk).update(status='em_atendimento')
         self.entrar()
         r = self.client.get(reverse('monitor_painel'))
-        self.assertEqual(r.context['resumo'].estado, 'disponivel')
-        self.assertContains(r, 'Disponível agora')
-        self.assertContains(r, 'até 11:00')
-
-    def test_horario_de_agora_com_pedido_mostra_quem_e_o_assunto(self):
-        self.pedido(self.horario(), assunto='Séries de Taylor')
-        self.entrar()
-        r = self.client.get(reverse('monitor_painel'))
-        self.assertEqual(r.context['resumo'].estado, 'em_atendimento')
-        self.assertContains(r, 'Em atendimento')
-        self.assertContains(r, 'Ana: Séries de Taylor')
+        self.assertEqual(r.context['atual'].assunto, 'Séries de Taylor')
+        self.assertContains(r, 'Marcado para agora: Ana, Séries de Taylor, até 11:00')
         self.assertContains(r, 'Já começou')           #em andamento: não dá mais para remover
         self.assertNotContains(r, 'Confirmar remoção')
 
-    def test_fora_do_horario_mostra_o_proximo_atendimento(self):
+    def test_mostra_o_proximo_atendimento(self):
         h = self.horario(inicio=time(14, 0), fim=time(15, 0))
         self.pedido(h)
         self.entrar()
         r = self.client.get(reverse('monitor_painel'))
-        self.assertEqual(r.context['resumo'].estado, 'indisponivel')
-        self.assertContains(r, 'Próximo atendimento')
+        self.assertIsNone(r.context['atual'])
+        self.assertContains(r, 'Próximo atendimento marcado')
         self.assertContains(r, 'às 14:00, com Ana')
         self.assertContains(r, 'Confirmar remoção')    #ainda não começou: pode remover
 
@@ -371,17 +363,14 @@ class AdminTests(BaseTeste):
         self.assertEqual(self.monitor.senha, antes)
 
 
-class StatusManualTests(BaseTeste):
-    """O monitor sobrepõe, por tempo limitado, o estado calculado pelos horários."""
+class StatusTests(BaseTeste):
+    """O monitor escolhe o próprio status, e ele vale até ser trocado (ou até o monitor sair)."""
 
-    def definir(self, status, minutos, monitor=None):
-        m = monitor or self.monitor
-        Monitor.objects.filter(pk=m.pk).update(
-            status_manual=status, status_manual_ate=AGORA + timedelta(minutes=minutos))
+    def mudar(self, status):
+        return self.client.post(reverse('monitor_status'), {'status': status})
 
-    def estado_no_painel(self):
-        self.entrar()
-        return self.client.get(reverse('monitor_painel')).context['resumo']
+    def status_atual(self, monitor=None):
+        return Monitor.objects.get(pk=(monitor or self.monitor).pk).status
 
     def aluno_ve(self, url_name, *args, **params):
         cliente = Client()
@@ -391,153 +380,105 @@ class StatusManualTests(BaseTeste):
         with patch('interface_aluno.views.agora_local', return_value=AGORA):
             return cliente.get(reverse(url_name, args=args), params)
 
-    # ---------- como o estado é calculado ----------
+    # ---------- o monitor muda o status ----------
 
-    def test_sem_status_manual_nada_muda(self):
-        self.horario()
-        r = self.estado_no_painel()
-        self.assertEqual((r.estado, r.manual), ('disponivel', False))
+    def test_comeca_indisponivel(self):
+        self.assertEqual(self.status_atual(), 'indisponivel')
 
-    def test_indisponivel_manual_vence_o_horario_livre(self):
-        self.horario()  #10:00-11:00, agora são 10:30
-        self.definir('indisponivel', 30)
-        r = self.estado_no_painel()
-        self.assertEqual((r.estado, r.estado_automatico, r.manual), ('indisponivel', 'disponivel', True))
-
-    def test_indisponivel_manual_vence_ate_o_atendimento_solicitado(self):
-        self.pedido(self.horario())
-        self.definir('indisponivel', 30)
-        r = self.estado_no_painel()
-        self.assertEqual((r.estado, r.estado_automatico), ('indisponivel', 'em_atendimento'))
-
-    def test_disponivel_manual_vale_fora_do_horario(self):
-        self.horario(inicio=time(14, 0), fim=time(15, 0))
-        self.definir('disponivel', 60)
-        r = self.estado_no_painel()
-        self.assertEqual((r.estado, r.estado_automatico, r.manual), ('disponivel', 'indisponivel', True))
-        self.assertEqual(r.disponivel_ate, time(11, 30))
-
-    def test_disponivel_manual_nao_passa_por_cima_de_atendimento_solicitado(self):
-        self.pedido(self.horario())
-        self.definir('disponivel', 60)
-        r = self.estado_no_painel()
-        self.assertEqual((r.estado, r.manual), ('em_atendimento', False))
-
-    def test_status_manual_vencido_e_ignorado(self):
-        self.horario()
-        self.definir('indisponivel', -1)  #venceu há um minuto
-        r = self.estado_no_painel()
-        self.assertEqual((r.estado, r.manual), ('disponivel', False))
-
-    def test_status_manual_e_so_do_monitor_que_o_definiu(self):
-        self.horario(monitor=self.outro)
-        self.definir('indisponivel', 30)  #do monitor, não da Carla
-        self.entrar(self.outro)
-        self.assertEqual(self.client.get(reverse('monitor_painel')).context['resumo'].estado, 'disponivel')
-
-    # ---------- a view que altera o status ----------
-
-    def post(self, **dados):
-        return self.client.post(reverse('monitor_status'), dados, follow=True)
-
-    def test_fica_indisponivel_por_o_tempo_escolhido(self):
-        self.horario()
+    def test_muda_para_cada_um_dos_tres(self):
         self.entrar()
-        r = self.post(status='indisponivel', duracao='30')
-        self.monitor.refresh_from_db()
-        self.assertEqual(self.monitor.status_manual, 'indisponivel')
-        self.assertEqual(self.monitor.status_manual_ate, AGORA + timedelta(minutes=30))
-        self.assertContains(r, 'indisponível até 11:00')
+        for status in ('disponivel', 'em_atendimento', 'indisponivel'):
+            with self.subTest(status):
+                r = self.mudar(status)
+                self.assertRedirects(r, reverse('monitor_painel'), fetch_redirect_response=False)
+                self.assertEqual(self.status_atual(), status)
 
-    def test_fica_disponivel_fora_do_horario(self):
-        self.horario(inicio=time(14, 0), fim=time(15, 0))
+    def test_status_nao_depende_dos_horarios(self):
+        #sem nenhum horário cadastrado, ele pode ficar disponível; dentro de um horário, indisponível
         self.entrar()
-        r = self.post(status='disponivel', duracao='120')
-        self.monitor.refresh_from_db()
-        self.assertEqual(self.monitor.status_manual, 'disponivel')
-        self.assertContains(r, 'disponível até 12:30')
+        self.mudar('disponivel')
+        self.assertEqual(self.status_atual(), 'disponivel')
+        self.horario()  #quarta 10:00-11:00, acontecendo agora
+        self.mudar('indisponivel')
+        self.assertEqual(self.status_atual(), 'indisponivel')
 
-    def test_disponivel_e_recusado_dentro_do_horario(self):
-        self.horario()
+    def test_valor_invalido_nao_muda_nada(self):
         self.entrar()
-        r = self.post(status='disponivel', duracao='60')
-        self.monitor.refresh_from_db()
-        self.assertEqual(self.monitor.status_manual, '')
-        self.assertContains(r, 'dentro de um horário de atendimento')
-
-    def test_voltar_ao_automatico_limpa(self):
-        self.horario()
-        self.definir('indisponivel', 60)
-        self.entrar()
-        self.post(status='automatico')
-        self.monitor.refresh_from_db()
-        self.assertEqual((self.monitor.status_manual, self.monitor.status_manual_ate), ('', None))
-
-    def test_dados_invalidos_nao_alteram_nada(self):
-        self.entrar()
-        for dados in [dict(status='x', duracao='30'), dict(status='indisponivel', duracao='5'),
-                      dict(status='indisponivel', duracao='abc'), dict(status='indisponivel'), dict()]:
-            r = self.post(**dados)
-            self.assertEqual(r.status_code, 200)
-        self.monitor.refresh_from_db()
-        self.assertEqual(self.monitor.status_manual, '')
+        self.mudar('disponivel')
+        for invalido in ('', 'automatico', 'ocupado'):
+            with self.subTest(invalido):
+                self.mudar(invalido)
+                self.assertEqual(self.status_atual(), 'disponivel')
 
     def test_exige_login_e_post(self):
-        r = self.client.post(reverse('monitor_status'), dict(status='indisponivel', duracao='30'))
-        self.assertRedirects(r, reverse('home'))
+        self.mudar('disponivel')
+        self.assertEqual(self.status_atual(), 'indisponivel')
         self.entrar()
         self.assertEqual(self.client.get(reverse('monitor_status')).status_code, 405)
 
-    # ---------- o que o monitor vê no painel ----------
-
-    def test_painel_oferece_o_botao_certo_para_cada_situacao(self):
-        self.horario(inicio=time(14, 0), fim=time(15, 0))
+    def test_muda_so_o_do_proprio_monitor(self):
         self.entrar()
-        self.assertContains(self.client.get(reverse('monitor_painel')), 'Ficar disponível agora')
-        Horario.objects.all().delete()
-        self.horario()
-        self.assertContains(self.client.get(reverse('monitor_painel')), 'Ficar indisponível agora')
+        self.mudar('disponivel')
+        self.assertEqual(self.status_atual(self.outro), 'indisponivel')
 
-    def test_painel_com_status_manual_mostra_ate_quando_e_como_voltar(self):
-        self.horario()
-        self.definir('indisponivel', 30)
+    def test_painel_marca_o_botao_do_status_atual(self):
         self.entrar()
+        self.mudar('em_atendimento')
         r = self.client.get(reverse('monitor_painel'))
-        self.assertContains(r, 'Você marcou que está indisponível até 11:00')
-        self.assertContains(r, 'Voltar ao automático')
-        self.assertNotContains(r, 'Ficar indisponível agora')
+        self.assertContains(r, 'value="em_atendimento"')
+        self.assertContains(r, 'class="status-botao status-em_atendimento"\n                        aria-pressed="true"')
+        self.assertContains(r, 'class="status-botao status-disponivel"\n                        aria-pressed="false"')
 
-    # ---------- o que o ALUNO vê ----------
+    # ---------- sair ----------
 
-    def test_aluno_ve_o_monitor_indisponivel_na_lista_e_no_detalhe(self):
-        self.horario()
-        self.definir('indisponivel', 30)
-        lista = self.aluno_ve('painel')
-        self.assertContains(lista, 'Indisponível agora')
-        self.assertContains(lista, 'Indisponível até 11:00')
-        detalhe = self.aluno_ve('monitor_detalhe', self.monitor.id)
-        self.assertContains(detalhe, 'marcou que está indisponível até 11:00')
-        self.assertNotContains(detalhe, 'Atende até')
+    def test_sair_volta_para_indisponivel(self):
+        self.entrar()
+        self.mudar('disponivel')
+        self.client.post(reverse('sair'))
+        self.assertEqual(self.status_atual(), 'indisponivel')
 
-    def test_aluno_ve_disponivel_manual_com_a_hora_certa_e_no_filtro_agora(self):
-        self.horario(inicio=time(14, 0), fim=time(15, 0))
-        self.definir('disponivel', 60)
-        lista = self.aluno_ve('painel', disponibilidade='agora')
-        self.assertContains(lista, 'Atende até 11:30')  #nunca "Atende até " em branco
-        self.assertContains(lista, 'Breno')
-        detalhe = self.aluno_ve('monitor_detalhe', self.monitor.id)
-        self.assertContains(detalhe, 'marcou que está disponível até 11:30')
+    def test_aluno_saindo_nao_mexe_em_nenhum_monitor(self):
+        Monitor.objects.filter(pk=self.monitor.pk).update(status='disponivel')
+        sessao = self.client.session
+        sessao['aluno_id'] = self.aluno.id
+        sessao.save()
+        self.client.post(reverse('sair'))
+        self.assertEqual(self.status_atual(), 'disponivel')
 
-    def test_status_manual_nao_impede_o_aluno_de_solicitar_horarios_livres(self):
+    # ---------- o que o aluno vê ----------
+
+    def test_aluno_ve_o_status_na_lista_e_no_detalhe(self):
+        for status, texto in (('disponivel', 'Disponível agora'), ('em_atendimento', 'Em atendimento'),
+                              ('indisponivel', 'Indisponível agora')):
+            with self.subTest(status):
+                Monitor.objects.filter(pk=self.monitor.pk).update(status=status)
+                lista = self.aluno_ve('painel')
+                breno = next(r for r in lista.context['resumos'] if r.monitor == self.monitor)
+                self.assertEqual(breno.estado, status)
+                self.assertContains(self.aluno_ve('monitor_detalhe', self.monitor.id), texto)
+
+    def test_filtro_disponivel_agora_mostra_so_quem_marcou_disponivel(self):
+        Monitor.objects.filter(pk=self.monitor.pk).update(status='disponivel')
+        Monitor.objects.filter(pk=self.outro.pk).update(status='em_atendimento')
+        r = self.aluno_ve('painel', disponibilidade='agora')
+        self.assertEqual([x.monitor for x in r.context['resumos']], [self.monitor])
+
+    def test_quem_esta_disponivel_aparece_primeiro_na_lista(self):
+        #Breno vem antes de Carla pelo nome; com Carla disponível, ela passa para o topo
+        Monitor.objects.filter(pk=self.outro.pk).update(status='disponivel')
+        r = self.aluno_ve('painel')
+        self.assertEqual([x.monitor for x in r.context['resumos']], [self.outro, self.monitor])
+
+    def test_indisponivel_nao_impede_o_aluno_de_reservar(self):
         h = self.horario(inicio=time(14, 0), fim=time(15, 0))
-        self.definir('indisponivel', 120)
         cliente = Client()
         sessao = cliente.session
         sessao['aluno_id'] = self.aluno.id
         sessao.save()
         with patch('interface_aluno.views.agora_local', return_value=AGORA):
             cliente.post(reverse('solicitar_horario', args=[h.id]), {
-                'data': HOJE.isoformat(), 'assunto': 'Teste', 'formato': 'online', 'participantes': 'individual'})
+                'data': HOJE.isoformat(), 'assunto': 'Teste',
+                'formato': 'online', 'participantes': 'individual'})
         self.assertTrue(Solicitacao.objects.filter(horario=h, data=HOJE).exists())
 
 

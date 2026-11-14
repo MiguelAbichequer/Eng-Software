@@ -62,5 +62,10 @@ def home(request):
 
 @require_POST
 def sair(request):
+    #monitor saindo: o status volta para "indisponível", para os alunos não o verem
+    #disponível depois que ele foi embora
+    monitor_id = request.session.get('monitor_id')
+    if monitor_id:
+        Monitor.objects.filter(pk=monitor_id).update(status=Monitor.INDISPONIVEL)
     request.session.flush()
     return redirect('home')

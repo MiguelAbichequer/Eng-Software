@@ -50,10 +50,7 @@
                 <div>
                     <dt>Situação agora</dt>
                     <dd>
-                        {% if usuario.expulso %}Expulso
-                        {% elif resumo.estado == 'disponivel' %}Disponível{% if resumo.manual %} (marcado pelo monitor){% endif %}
-                        {% elif resumo.estado == 'em_atendimento' %}Em atendimento
-                        {% else %}Indisponível{% if resumo.manual %} (marcado pelo monitor){% endif %}{% endif %}
+                        {% if usuario.expulso %}Expulso{% else %}{{ usuario.get_status_display }} (escolhido pelo monitor){% endif %}
                     </dd>
                 </div>
                 <div>

@@ -201,16 +201,11 @@ class VariosAlunosNoMesmoHorarioTests(TestCase):
         self.assertContains(r, '1 aluno já reservou')
         self.assertNotContains(r, 'Você já reservou')
 
-    def test_em_atendimento_outro_aluno_ainda_pode_entrar_no_horario_de_agora(self):
+    def test_outro_aluno_ainda_pode_entrar_no_horario_de_agora(self):
         self.logar(self.ana)
         self.solicitar(self.agora_h)
 
         self.logar(self.bruno)
-        r = self.pagina_do_monitor()
-        self.assertEqual(r.context['resumo'].estado, 'em_atendimento')
-        self.assertEqual(r.context['resumo'].inscritos_atual, 1)
-        self.assertContains(r, 'Você ainda pode entrar neste horário')
-
         r = self.solicitar(self.agora_h)
         self.assertContains(r, 'Horário solicitado')
         self.assertEqual(Solicitacao.objects.filter(horario=self.agora_h).count(), 2)

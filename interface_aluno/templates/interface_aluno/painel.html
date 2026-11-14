@@ -61,11 +61,7 @@
                             {% include 'interface_aluno/_estado.html' with estado=r.estado %}
 
                             <span class="situacao-detalhe">
-                                {% if r.estado == 'disponivel' %}
-                                    Atende até {{ r.disponivel_ate|time:"H:i" }}
-                                {% elif r.manual %}
-                                    Indisponível até {{ r.manual_ate|time:"H:i" }}
-                                {% elif r.proxima_vaga %}
+                                {% if r.proxima_vaga %}
                                     Próximo horário: {{ r.proxima_vaga.data|date:"D, d/m" }}, {{ r.proxima_vaga.horario.hora_inicio|time:"H:i" }}
                                 {% else %}
                                     Sem horários nas próximas semanas
