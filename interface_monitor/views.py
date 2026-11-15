@@ -18,7 +18,7 @@ LIMITE_HISTORICO = 20
 
 
 def _ordem(solicitacao):
-    return (solicitacao.data, solicitacao.horario.hora_inicio)
+    return (solicitacao.data, solicitacao.hora_inicio)
 
 
 def _marcados_por_horario(monitor, agora):
@@ -92,7 +92,7 @@ def alterar_status(request):
 @monitor_logado
 @require_POST
 def remover_atendimento(request, solicitacao_id):
-    """Remove uma solicitação feita com este monitor."""
+    """Remove uma solicitação feita com este monitor. Os blocos dela voltam a ficar livres."""
     #filtrar por monitor garante que ninguém remova o atendimento de outro monitor (vira 404)
     solicitacao = get_object_or_404(
         Solicitacao.objects.select_related('horario', 'aluno'),
@@ -105,7 +105,7 @@ def remover_atendimento(request, solicitacao_id):
 
     resumo = (
         f'{date_format(solicitacao.data, "l, d/m")}, '
-        f'das {solicitacao.horario.hora_inicio:%H:%M} às {solicitacao.horario.hora_fim:%H:%M}, com {solicitacao.aluno.nome}'
+        f'das {solicitacao.hora_inicio:%H:%M} às {solicitacao.hora_fim:%H:%M}, com {solicitacao.aluno.nome}'
     )
     solicitacao.delete()
     messages.success(request, f'Atendimento removido: {resumo}.')

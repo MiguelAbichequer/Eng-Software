@@ -264,19 +264,49 @@ select {
 .vaga[open] .rotulo-fechar { display: inline; }
 .vaga[open] summary { border-bottom: 1px solid var(--linha); }
 
-/* quantos alunos já reservaram: fica entre o horário e o botão */
-.vaga-inscritos { flex: 1; font-size: .9rem; color: var(--tinta-suave); }
+/* "3 horários livres · 1 seu": fica entre o horário e o botão */
+.vaga-resumo { flex: 1; font-size: .9rem; color: var(--tinta-suave); }
 
-/* vaga que o próprio aluno já reservou: sem formulário, só o aviso e o link */
-.vaga-minha {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: .6rem 1rem;
-    border-color: var(--verde);
-    background: var(--verde-fundo);
+/* ---------- blocos de 15 minutos ---------- */
+
+.blocos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: .5rem;
 }
-.vaga-minha a { font-weight: 600; white-space: nowrap; }
+
+.bloco {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .1rem;
+    padding: .5rem .25rem;
+    border: 2px solid var(--linha);
+    border-radius: 6px;
+    text-align: center;
+    line-height: 1.2;
+}
+.bloco-hora { font-weight: 700; font-variant-numeric: tabular-nums; }
+.bloco-rotulo { font-size: .8rem; }
+
+/* livre: clicável; o checkbox fica escondido e a caixa inteira vira o botão */
+.bloco-livre { cursor: pointer; background: var(--superficie); border-color: var(--azul); color: var(--azul-escuro); }
+.bloco-livre input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.bloco-livre:hover { background: #e3eef3; }
+.bloco-livre:has(input:checked) { background: var(--azul-escuro); border-color: var(--azul-escuro); color: #fff; }
+/* marcado: troca "livre" por "✓ marcado" */
+.bloco-livre .rotulo-marcado { display: none; }
+.bloco-livre:has(input:checked) .rotulo-livre { display: none; }
+.bloco-livre:has(input:checked) .rotulo-marcado { display: inline; }
+.bloco-livre:has(input:focus-visible) { outline: 3px solid var(--azul); outline-offset: 2px; }
+.bloco-livre:has(input:disabled) { cursor: not-allowed; opacity: .55; }
+
+/* bloqueados: cinza (de outro aluno ou já passou), verde (do próprio aluno) */
+.bloco-ocupado, .bloco-passou { background: var(--cinza-fundo); border-color: var(--cinza-fundo); color: var(--cinza); }
+.bloco-passou { opacity: .6; }
+.bloco-meu { background: var(--verde-fundo); border-color: var(--verde); color: var(--verde); }
+
+.blocos-nota { margin: .5rem 0 0; font-size: .9rem; color: var(--tinta-suave); }
 
 .nota-horarios { margin: -.25rem 0 1rem; font-size: .9rem; color: var(--tinta-suave); }
 

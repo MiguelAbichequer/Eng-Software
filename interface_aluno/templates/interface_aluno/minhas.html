@@ -21,7 +21,7 @@
 
                         <div class="solicitacao-quando">
                             <strong>{{ s.data|date:"l, d/m" }}</strong>
-                            <span>{{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}</span>
+                            <span>{{ s.hora_inicio|time:"H:i" }} às {{ s.hora_fim|time:"H:i" }}</span>
                             {% if s.em_andamento %}
                                 <span class="estado estado-em_atendimento"><span class="ponto" aria-hidden="true"></span>Acontecendo agora</span>
                             {% endif %}
@@ -76,7 +76,7 @@
                     <li class="solicitacao-item">
                         <div class="solicitacao-quando">
                             <strong>{{ s.data|date:"d/m/Y" }}</strong>
-                            <span>{{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}</span>
+                            <span>{{ s.hora_inicio|time:"H:i" }} às {{ s.hora_fim|time:"H:i" }}</span>
                         </div>
                         <div class="solicitacao-dados">
                             <span class="solicitacao-monitor">{{ s.horario.monitor.nome }}</span>

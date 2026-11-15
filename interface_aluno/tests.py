@@ -36,9 +36,11 @@ class MinhasSolicitacoesTests(TestCase):
         sessao['aluno_id'] = self.ana.id
         sessao.save()
 
-    def pedido(self, horario, data=HOJE, aluno=None, assunto='Integrais'):
+    def pedido(self, horario, data=HOJE, aluno=None, assunto='Integrais', inicio=None, fim=None):
+        #sem início/fim, a reserva ocupa o horário inteiro
         return Solicitacao.objects.create(
             aluno=aluno or self.ana, horario=horario, data=data,
+            hora_inicio=inicio or horario.hora_inicio, hora_fim=fim or horario.hora_fim,
             assunto=assunto, formato='online', participantes='individual',
         )
 
@@ -129,94 +131,163 @@ class MinhasSolicitacoesTests(TestCase):
 
 
 @patch('interface_aluno.views.agora_local', lambda: AGORA)
-class VariosAlunosNoMesmoHorarioTests(TestCase):
-    """A monitoria é aberta: vários alunos podem reservar o mesmo horário na mesma data."""
+class BlocosTests(TestCase):
+    """Reserva em blocos de 15 minutos: cada bloco é de um aluno só."""
 
     def setUp(self):
         self.ana = Aluno.objects.create(matricula='a1', nome='Ana')
         self.bruno = Aluno.objects.create(matricula='a2', nome='Bruno')
         self.monitor = Monitor.objects.create(matricula='m1', nome='Carla')
-        #quarta 10:00-11:00 (acontecendo agora) e quarta 14:00-15:00 (mais tarde hoje)
+        self.outro_monitor = Monitor.objects.create(matricula='m2', nome='Diego')
+        #quarta 10:00-11:00 (acontecendo agora, 10:30) e quarta 14:00-15:00 (mais tarde hoje)
         self.agora_h = Horario.objects.create(monitor=self.monitor, dia_semana=QUARTA, hora_inicio=time(10), hora_fim=time(11))
         self.tarde_h = Horario.objects.create(monitor=self.monitor, dia_semana=QUARTA, hora_inicio=time(14), hora_fim=time(15))
+        self.logar(self.ana)
 
     def logar(self, aluno):
         sessao = self.client.session
         sessao['aluno_id'] = aluno.id
         sessao.save()
 
-    def solicitar(self, horario, data=HOJE):
+    def reservar(self, horario, *blocos, data=HOJE):
         return self.client.post(reverse('solicitar_horario', args=[horario.id]), {
-            'data': data.isoformat(), 'assunto': 'Integrais',
+            'data': data.isoformat(), 'blocos': list(blocos), 'assunto': 'Integrais',
             'formato': 'presencial', 'participantes': 'individual',
         }, follow=True)
 
-    def pagina_do_monitor(self):
-        return self.client.get(reverse('monitor_detalhe', args=[self.monitor.id]))
+    def trechos(self, aluno=None):
+        qs = Solicitacao.objects.filter(aluno=aluno) if aluno else Solicitacao.objects.all()
+        return [(f'{s.hora_inicio:%H:%M}', f'{s.hora_fim:%H:%M}') for s in qs.order_by('hora_inicio')]
 
-    def vaga(self, resposta, horario, data=HOJE):
-        return next(v for v in resposta.context['vagas'] if v.horario == horario and v.data == data)
+    def situacoes(self, horario, data=HOJE):
+        r = self.client.get(reverse('monitor_detalhe', args=[self.monitor.id]))
+        vaga = next(v for v in r.context['vagas'] if v.horario == horario and v.data == data)
+        return {f'{c.inicio:%H:%M}': c.situacao for c in vaga.blocos}
 
-    def test_dois_alunos_reservam_o_mesmo_horario(self):
-        self.logar(self.ana)
-        self.solicitar(self.tarde_h)
+    # --- os blocos na tela ---
+
+    def test_horario_vira_blocos_de_15_minutos(self):
+        self.assertEqual(self.situacoes(self.tarde_h),
+                         {'14:00': 'livre', '14:15': 'livre', '14:30': 'livre', '14:45': 'livre'})
+
+    def test_blocos_que_ja_comecaram_nao_podem_ser_reservados(self):
+        #agora são 10:30: 10:00, 10:15 e 10:30 já começaram
+        self.assertEqual(self.situacoes(self.agora_h),
+                         {'10:00': 'passou', '10:15': 'passou', '10:30': 'passou', '10:45': 'livre'})
+        r = self.reservar(self.agora_h, '10:15')
+        self.assertContains(r, 'não está mais livre')
+        self.assertFalse(Solicitacao.objects.exists())
+
+    def test_reservada_fica_sua_para_o_dono_e_cinza_para_os_outros(self):
+        self.reservar(self.tarde_h, '14:15')
+        self.assertEqual(self.situacoes(self.tarde_h)['14:15'], 'meu')
         self.logar(self.bruno)
-        r = self.solicitar(self.tarde_h)
+        situacoes = self.situacoes(self.tarde_h)
+        self.assertEqual(situacoes['14:15'], 'ocupado')
+        self.assertEqual(situacoes['14:00'], 'livre')
+        r = self.client.get(reverse('monitor_detalhe', args=[self.monitor.id]))
+        self.assertContains(r, 'bloco bloco-ocupado')
 
+    # --- reservar ---
+
+    def test_blocos_seguidas_viram_uma_solicitacao(self):
+        r = self.reservar(self.tarde_h, '14:00', '14:15', '14:30')
         self.assertContains(r, 'Horário solicitado')
-        alunos = set(Solicitacao.objects.filter(horario=self.tarde_h, data=HOJE).values_list('aluno__nome', flat=True))
-        self.assertEqual(alunos, {'Ana', 'Bruno'})
+        self.assertEqual(self.trechos(), [('14:00', '14:45')])
 
-    def test_o_mesmo_aluno_nao_reserva_duas_vezes(self):
-        self.logar(self.ana)
-        self.solicitar(self.tarde_h)
-        r = self.solicitar(self.tarde_h)
+    def test_blocos_separadas_viram_solicitacoes_diferentes(self):
+        self.reservar(self.tarde_h, '14:00', '14:15', '14:45')
+        self.assertEqual(self.trechos(), [('14:00', '14:30'), ('14:45', '15:00')])
 
-        self.assertContains(r, 'Você já solicitou esse horário nessa data')
-        self.assertEqual(Solicitacao.objects.count(), 1)
+    def test_a_ordem_e_repeticoes_nao_importam(self):
+        self.reservar(self.tarde_h, '14:15', '14:00', '14:15')
+        self.assertEqual(self.trechos(), [('14:00', '14:30')])
 
-    def test_o_banco_tambem_impede_o_mesmo_aluno_duas_vezes(self):
-        from django.db import IntegrityError, transaction
-        dados = dict(aluno=self.ana, horario=self.tarde_h, data=HOJE, assunto='x', formato='online', participantes='individual')
-        Solicitacao.objects.create(**dados)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Solicitacao.objects.create(**dados)
-
-    def test_horario_reservado_continua_aparecendo_com_a_contagem(self):
-        self.logar(self.ana)
-        self.solicitar(self.tarde_h)
-
-        #para a Ana: a vaga aparece como dela, sem formulário
-        r = self.pagina_do_monitor()
-        vaga = self.vaga(r, self.tarde_h)
-        self.assertTrue(vaga.minha)
-        self.assertEqual(vaga.inscritos, 1)
-        self.assertContains(r, 'Você já reservou')
-
-        #para o Bruno: a mesma vaga, com o aviso de quantos já reservaram e o formulário
+    def test_dois_alunos_reservam_blocos_diferentes_do_mesmo_horario(self):
+        self.reservar(self.tarde_h, '14:00')
         self.logar(self.bruno)
-        r = self.pagina_do_monitor()
-        vaga = self.vaga(r, self.tarde_h)
-        self.assertFalse(vaga.minha)
-        self.assertContains(r, '1 aluno já reservou')
-        self.assertNotContains(r, 'Você já reservou')
-
-    def test_outro_aluno_ainda_pode_entrar_no_horario_de_agora(self):
-        self.logar(self.ana)
-        self.solicitar(self.agora_h)
-
-        self.logar(self.bruno)
-        r = self.solicitar(self.agora_h)
+        r = self.reservar(self.tarde_h, '14:15')
         self.assertContains(r, 'Horário solicitado')
-        self.assertEqual(Solicitacao.objects.filter(horario=self.agora_h).count(), 2)
+        self.assertEqual(self.trechos(self.ana), [('14:00', '14:15')])
+        self.assertEqual(self.trechos(self.bruno), [('14:15', '14:30')])
 
-    def test_cancelar_tira_so_o_proprio_aluno(self):
-        self.logar(self.ana)
-        self.solicitar(self.tarde_h)
+    def test_bloco_de_outro_aluno_nao_pode_ser_reservado_e_nada_e_gravado(self):
+        self.reservar(self.tarde_h, '14:15')
         self.logar(self.bruno)
-        self.solicitar(self.tarde_h)
+        r = self.reservar(self.tarde_h, '14:00', '14:15')  #um livre e um ocupado
+        self.assertContains(r, 'O horário das 14:15 não está mais livre')
+        self.assertEqual(self.trechos(self.bruno), [])     #nem a livre foi gravada
 
-        do_bruno = Solicitacao.objects.get(aluno=self.bruno)
-        self.client.post(reverse('cancelar_solicitacao', args=[do_bruno.id]))
+    def test_sem_bloco_marcado(self):
+        r = self.reservar(self.tarde_h)
+        self.assertContains(r, 'Marque pelo menos um horário')
+        self.assertFalse(Solicitacao.objects.exists())
 
-        self.assertEqual(list(Solicitacao.objects.values_list('aluno__nome', flat=True)), ['Ana'])
+    def test_bloco_fora_do_horario_ou_texto_invalido(self):
+        r = self.reservar(self.tarde_h, '13:45')
+        self.assertContains(r, 'não faz parte deste atendimento')
+        r = self.reservar(self.tarde_h, 'abc')  #lixo é ignorado: fica sem bloco
+        self.assertContains(r, 'Marque pelo menos um horário')
+        self.assertFalse(Solicitacao.objects.exists())
+
+    def test_data_fora_da_janela(self):
+        r = self.reservar(self.tarde_h, '14:00', data=HOJE + timedelta(weeks=5))
+        self.assertContains(r, 'não está mais disponível')
+
+    # --- limite por dia ---
+
+    def test_limite_de_4_blocos_por_dia_com_o_mesmo_monitor(self):
+        self.reservar(self.tarde_h, '14:00', '14:15', '14:30')
+        r = self.reservar(self.tarde_h, '14:45')
+        self.assertContains(r, 'Horário solicitado')  #3 + 1 = 4: ainda cabe
+
+        r = self.reservar(self.agora_h, '10:45')     #a 5ª, em outro horário do mesmo monitor e dia
+        self.assertContains(r, 'até 4 horários de 15 minutos por dia com o mesmo monitor (60 minutos no total)')
+        self.assertContains(r, 'Você ainda pode reservar 0 nesse dia')
+        self.assertEqual(len(self.trechos()), 2)
+
+    def test_limite_diz_quantas_ainda_cabem(self):
+        self.reservar(self.tarde_h, '14:00', '14:15', '14:30')
+        r = self.reservar(self.agora_h, '10:45')
+        self.assertContains(r, 'Horário solicitado')
+        Solicitacao.objects.filter(hora_inicio=time(10, 45)).delete()
+        r = self.client.get(reverse('monitor_detalhe', args=[self.monitor.id]))
+        self.assertContains(r, 'Você ainda pode marcar 1 neste dia')
+
+    def test_limite_e_por_monitor_e_por_dia(self):
+        self.reservar(self.tarde_h, '14:00', '14:15', '14:30', '14:45')
+        #outro monitor no mesmo dia: conta separado
+        h_diego = Horario.objects.create(monitor=self.outro_monitor, dia_semana=QUARTA, hora_inicio=time(16), hora_fim=time(17))
+        self.assertContains(self.reservar(h_diego, '16:00'), 'Horário solicitado')
+        #mesmo monitor, semana que vem: conta separado
+        self.assertContains(self.reservar(self.tarde_h, '14:00', data=HOJE + timedelta(weeks=1)), 'Horário solicitado')
+
+    # --- cancelar e regras do horário ---
+
+    def test_cancelar_libera_as_blocos(self):
+        self.reservar(self.tarde_h, '14:00', '14:15')
+        s = Solicitacao.objects.get()
+        self.client.post(reverse('cancelar_solicitacao', args=[s.id]))
+        self.assertEqual(set(self.situacoes(self.tarde_h).values()), {'livre'})
+
+    def test_horario_precisa_ser_multiplo_de_15_minutos(self):
+        from django.core.exceptions import ValidationError
+        h = Horario(monitor=self.monitor, dia_semana=QUARTA + 1, hora_inicio=time(14, 10), hora_fim=time(15))
+        with self.assertRaises(ValidationError):
+            h.full_clean()
+        h.hora_inicio = time(14, 15)
+        h.full_clean()  #múltiplo de 15: passa
+
+
+class AgruparSeguidasTests(TestCase):
+    """A função que junta blocos seguidos em trechos, testada sozinha."""
+
+    def test_agrupa(self):
+        from .reservas import agrupar_seguidas
+        t = lambda texto: time.fromisoformat(texto)
+        self.assertEqual(agrupar_seguidas([]), [])
+        self.assertEqual(agrupar_seguidas([t('14:00')]), [(t('14:00'), t('14:15'))])
+        self.assertEqual(
+            agrupar_seguidas([t('14:00'), t('14:15'), t('15:00'), t('15:15'), t('15:45')]),
+            [(t('14:00'), t('14:30')), (t('15:00'), t('15:30')), (t('15:45'), t('16:00'))],
+        )

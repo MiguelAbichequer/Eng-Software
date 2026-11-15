@@ -43,9 +43,11 @@ class BaseTeste(TestCase):
     def horario(self, dia=QUARTA, inicio=time(10, 0), fim=time(11, 0), monitor=None):
         return Horario.objects.create(monitor=monitor or self.monitor, dia_semana=dia, hora_inicio=inicio, hora_fim=fim)
 
-    def pedido(self, horario, data=HOJE, aluno=None, assunto='Integrais'):
+    def pedido(self, horario, data=HOJE, aluno=None, assunto='Integrais', inicio=None, fim=None):
+        #sem início/fim, a reserva ocupa o horário inteiro
         return Solicitacao.objects.create(
             aluno=aluno or self.aluno, horario=horario, data=data,
+            hora_inicio=inicio or horario.hora_inicio, hora_fim=fim or horario.hora_fim,
             assunto=assunto, formato='online', participantes='individual',
         )
 
@@ -145,12 +147,13 @@ class PainelTests(BaseTeste):
 
     def test_mostra_o_proximo_atendimento(self):
         h = self.horario(inicio=time(14, 0), fim=time(15, 0))
-        self.pedido(h)
+        self.pedido(h, inicio=time(14, 15), fim=time(14, 45))
         self.entrar()
         r = self.client.get(reverse('monitor_painel'))
         self.assertIsNone(r.context['atual'])
         self.assertContains(r, 'Próximo atendimento marcado')
-        self.assertContains(r, 'às 14:00, com Ana')
+        self.assertContains(r, 'às 14:15, com Ana')
+        self.assertContains(r, '14:15 às 14:45')       #mostra o trecho reservado, não o horário inteiro
         self.assertContains(r, 'Confirmar remoção')    #ainda não começou: pode remover
 
     def test_sem_horarios_cadastrados_orienta_a_cadastrar(self):
@@ -190,7 +193,7 @@ class PainelTests(BaseTeste):
         self.pedido(h2, data=HOJE)
         self.pedido(h1, data=HOJE)
         self.entrar()
-        ordem = [(s.data, s.horario.hora_inicio) for s in self.client.get(reverse('monitor_painel')).context['proximas']]
+        ordem = [(s.data, s.hora_inicio) for s in self.client.get(reverse('monitor_painel')).context['proximas']]
         self.assertEqual(ordem, sorted(ordem))
 
 
@@ -477,7 +480,7 @@ class StatusTests(BaseTeste):
         sessao.save()
         with patch('interface_aluno.views.agora_local', return_value=AGORA):
             cliente.post(reverse('solicitar_horario', args=[h.id]), {
-                'data': HOJE.isoformat(), 'assunto': 'Teste',
+                'data': HOJE.isoformat(), 'blocos': ['14:00'], 'assunto': 'Teste',
                 'formato': 'online', 'participantes': 'individual'})
         self.assertTrue(Solicitacao.objects.filter(horario=h, data=HOJE).exists())
 

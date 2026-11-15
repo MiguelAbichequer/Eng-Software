@@ -26,8 +26,8 @@
             {% else %}
                 O monitor não está atendendo neste momento.
             {% endif %}
-            {% if resumo.proxima_vaga %}
-                Próximo horário: {{ resumo.proxima_vaga.data|date:"l, d/m" }}, das {{ resumo.proxima_vaga.horario.hora_inicio|time:"H:i" }} às {{ resumo.proxima_vaga.horario.hora_fim|time:"H:i" }}.
+            {% if resumo.proximo_bloco %}
+                Próximo horário livre: {{ resumo.proxima_vaga.data|date:"l, d/m" }}, às {{ resumo.proximo_bloco.inicio|time:"H:i" }}.
             {% endif %}
         </p>
     </section>
@@ -39,7 +39,7 @@
             <ul>
                 {% for s in minhas %}
                     <li>
-                        <strong>{{ s.data|date:"l, d/m" }}</strong>, {{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}
+                        <strong>{{ s.data|date:"l, d/m" }}</strong>, {{ s.hora_inicio|time:"H:i" }} às {{ s.hora_fim|time:"H:i" }}
                         <span class="minhas-detalhe">{{ s.assunto }} &middot; {{ s.get_formato_display }} &middot; {{ s.get_participantes_display }}</span>
                     </li>
                 {% endfor %}
@@ -48,8 +48,12 @@
     {% endif %}
 
     <section aria-labelledby="titulo-horarios">
-        <h2 id="titulo-horarios">Horários disponíveis</h2>
-        <p class="nota-horarios">Mais de um aluno pode reservar o mesmo horário: a monitoria é aberta a todos que se inscreverem.</p>
+        <h2 id="titulo-horarios">Horários</h2>
+        <p class="nota-horarios">
+            Escolha os horários que quiser, de {{ minutos_bloco }} em {{ minutos_bloco }} minutos:
+            os seguidos viram uma solicitação só. Cada horário é de um aluno só, e você pode reservar
+            até {{ limite }} por dia com este monitor.
+        </p>
 
         {% if vagas %}
 
@@ -60,20 +64,15 @@
                     <h3>{{ dia.grouper|date:"l, d/m" }}</h3>
 
                     {% for vaga in dia.list %}
-                        {% if vaga.minha %}
-                            {# o aluno já reservou: mostra a vaga, mas sem formulário #}
-                            <div class="vaga vaga-minha">
-                                <span class="vaga-hora">{{ vaga.horario.hora_inicio|time:"H:i" }} às {{ vaga.horario.hora_fim|time:"H:i" }}</span>
-                                <span class="vaga-inscritos">{% if vaga.inscritos > 1 %}Você e mais {{ vaga.inscritos|add:"-1" }} aluno{{ vaga.inscritos|add:"-1"|pluralize }}{% else %}Só você até agora{% endif %}</span>
-                                <a href="{% url 'minhas_solicitacoes' %}">Você já reservou</a>
-                            </div>
-                        {% else %}
+                        {% with livres=vaga.livres|length minhas_aqui=vaga.meus|length %}
                         <details class="vaga">
                             <summary>
                                 <span class="vaga-hora">{{ vaga.horario.hora_inicio|time:"H:i" }} às {{ vaga.horario.hora_fim|time:"H:i" }}</span>
-                                {% if vaga.inscritos %}<span class="vaga-inscritos">{{ vaga.inscritos }} aluno{{ vaga.inscritos|pluralize }} já reserv{{ vaga.inscritos|pluralize:"ou,aram" }}</span>{% endif %}
+                                <span class="vaga-resumo">
+                                    {% if livres %}{{ livres }} horário{{ livres|pluralize }} livre{{ livres|pluralize }}{% else %}Sem horários livres{% endif %}{% if minhas_aqui %} &middot; {{ minhas_aqui }} seu{{ minhas_aqui|pluralize }}{% endif %}
+                                </span>
                                 <span class="botao botao-secundario">
-                                    <span class="rotulo-abrir">Solicitar</span>
+                                    <span class="rotulo-abrir">{% if livres %}Escolher{% else %}Ver{% endif %}</span>
                                     <span class="rotulo-fechar">Fechar</span>
                                 </span>
                             </summary>
@@ -82,29 +81,60 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="data" value="{{ vaga.data|date:'Y-m-d' }}">
 
-                                <label class="campo">
-                                    <span>Assunto da monitoria</span>
-                                    <input type="text" name="assunto" maxlength="200" required placeholder="Ex.: integrais por partes, lista 3">
-                                </label>
-
                                 <fieldset>
-                                    <legend>Formato</legend>
-                                    {% for valor, rotulo in formatos %}
-                                        <label class="opcao"><input type="radio" name="formato" value="{{ valor }}" required> {{ rotulo }}</label>
-                                    {% endfor %}
+                                    <legend>Horários de {{ minutos_bloco }} minutos</legend>
+                                    <div class="blocos">
+                                        {% for c in vaga.blocos %}
+                                            {% if c.livre %}
+                                                {# só as livres têm checkbox: o valor enviado é a hora de início #}
+                                                <label class="bloco bloco-livre">
+                                                    <input type="checkbox" name="blocos" value="{{ c.inicio|time:'H:i' }}" {% if not vaga.restam %}disabled{% endif %}>
+                                                    <span class="bloco-hora">{{ c.inicio|time:"H:i" }}</span>
+                                                    <span class="bloco-rotulo rotulo-livre">livre</span>
+                                                    <span class="bloco-rotulo rotulo-marcado">&#10003; marcado</span>
+                                                </label>
+                                            {% else %}
+                                                <span class="bloco bloco-{{ c.situacao }}">
+                                                    <span class="bloco-hora">{{ c.inicio|time:"H:i" }}</span>
+                                                    <span class="bloco-rotulo">{% if c.situacao == 'meu' %}seu{% elif c.situacao == 'ocupado' %}reservado{% else %}já passou{% endif %}</span>
+                                                </span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% if livres %}
+                                        {% if vaga.restam %}
+                                            <p class="blocos-nota">Você ainda pode marcar {{ vaga.restam }} neste dia com este monitor.</p>
+                                        {% else %}
+                                            <p class="blocos-nota">Você já reservou {{ limite }} horários neste dia com este monitor, que é o limite.</p>
+                                        {% endif %}
+                                    {% endif %}
                                 </fieldset>
 
-                                <fieldset>
-                                    <legend>Participantes</legend>
-                                    {% for valor, rotulo in participantes %}
-                                        <label class="opcao"><input type="radio" name="participantes" value="{{ valor }}" required> {{ rotulo }}</label>
-                                    {% endfor %}
-                                </fieldset>
+                                {% if livres and vaga.restam %}
+                                    <label class="campo">
+                                        <span>Assunto da monitoria</span>
+                                        <input type="text" name="assunto" maxlength="200" required placeholder="Ex.: integrais por partes, lista 3">
+                                    </label>
 
-                                <button type="submit" class="botao">Confirmar solicitação</button>
+                                    <fieldset>
+                                        <legend>Formato</legend>
+                                        {% for valor, rotulo in formatos %}
+                                            <label class="opcao"><input type="radio" name="formato" value="{{ valor }}" required> {{ rotulo }}</label>
+                                        {% endfor %}
+                                    </fieldset>
+
+                                    <fieldset>
+                                        <legend>Participantes</legend>
+                                        {% for valor, rotulo in participantes %}
+                                            <label class="opcao"><input type="radio" name="participantes" value="{{ valor }}" required> {{ rotulo }}</label>
+                                        {% endfor %}
+                                    </fieldset>
+
+                                    <button type="submit" class="botao">Reservar horários marcados</button>
+                                {% endif %}
                             </form>
                         </details>
-                        {% endif %}
+                        {% endwith %}
                     {% endfor %}
                 </div>
             {% endfor %}

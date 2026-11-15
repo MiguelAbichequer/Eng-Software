@@ -49,9 +49,11 @@ class BaseTeste(TestCase):
     def entrar_admin(self):
         self.client.force_login(self.admin)
 
-    def pedido(self, horario, data=HOJE, aluno=None, assunto='Integrais'):
+    def pedido(self, horario, data=HOJE, aluno=None, assunto='Integrais', inicio=None, fim=None):
+        #sem início/fim, a reserva ocupa o horário inteiro
         return Solicitacao.objects.create(
             aluno=aluno or self.aluno, horario=horario, data=data,
+            hora_inicio=inicio or horario.hora_inicio, hora_fim=fim or horario.hora_fim,
             assunto=assunto, formato='online', participantes='individual',
         )
 

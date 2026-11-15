@@ -51,7 +51,7 @@ def separar(solicitacoes, agora):
     proximas, anteriores = [], []
     for s in solicitacoes:
         (anteriores if ja_terminou(s, agora) else proximas).append(s)
-    ordem = lambda s: (s.data, s.horario.hora_inicio)
+    ordem = lambda s: (s.data, s.hora_inicio)
     proximas.sort(key=ordem)
     anteriores.sort(key=ordem, reverse=True)
     return proximas, anteriores

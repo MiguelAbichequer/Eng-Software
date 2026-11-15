@@ -27,20 +27,20 @@
                 Os alunos veem que você está na monitoria e livre.
             {% elif monitor.status == 'em_atendimento' %}
                 Os alunos veem que você está atendendo alguém.
-                {% if atual %}Marcado para agora: {{ atual.aluno.nome }}, {{ atual.assunto }}, até {{ atual.horario.hora_fim|time:"H:i" }}.{% endif %}
+                {% if atual %}Marcado para agora: {{ atual.aluno.nome }}, {{ atual.assunto }}, até {{ atual.hora_fim|time:"H:i" }}.{% endif %}
             {% else %}
                 Os alunos veem que você não está atendendo agora. As reservas continuam funcionando.
             {% endif %}
             Ao clicar em Sair, seu status volta para Indisponível.
         </p>
         {% if proximo %}
-            <p class="status-explicacao">Próximo atendimento marcado: {{ proximo.data|date:"l, d/m" }}, às {{ proximo.horario.hora_inicio|time:"H:i" }}, com {{ proximo.aluno.nome }}.</p>
+            <p class="status-explicacao">Próximo atendimento marcado: {{ proximo.data|date:"l, d/m" }}, às {{ proximo.hora_inicio|time:"H:i" }}, com {{ proximo.aluno.nome }}.</p>
         {% endif %}
     </section>
 
     {% if not tem_horarios %}
         <div class="vazio">
-            <p>Você ainda não cadastrou horários de atendimento, então os alunos não conseguem solicitar nada.</p>
+            <p>Você ainda não cadastrou horários de atendimento, então os alunos não conseguem reservar nada.</p>
             <p>Cadastre os dias e horas em que você atende.</p>
             <p><a class="botao" href="{% url 'monitor_horarios' %}">Cadastrar horários</a></p>
         </div>
@@ -78,7 +78,7 @@
                     <li class="solicitacao-item">
                         <div class="solicitacao-quando">
                             <strong>{{ s.data|date:"D, d/m" }}</strong>
-                            <span>{{ s.horario.hora_inicio|time:"H:i" }} às {{ s.horario.hora_fim|time:"H:i" }}</span>
+                            <span>{{ s.hora_inicio|time:"H:i" }} às {{ s.hora_fim|time:"H:i" }}</span>
                         </div>
                         <div class="solicitacao-dados">
                             <span class="solicitacao-monitor">{{ s.aluno.nome }}</span>

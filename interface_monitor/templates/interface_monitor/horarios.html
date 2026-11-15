@@ -5,7 +5,7 @@
 {% block conteudo %}
 
     <h1>Meus horários</h1>
-    <p class="subtitulo">Os horários em que você atende toda semana. Os alunos podem solicitá-los nas próximas duas semanas.</p>
+    <p class="subtitulo">Os horários em que você atende toda semana. Os alunos reservam pedaços de 15 minutos dentro deles, nas próximas duas semanas. Use horas terminadas em :00, :15, :30 ou :45.</p>
 
     <section aria-labelledby="titulo-novo">
         <h2 id="titulo-novo" class="titulo-primeiro">Cadastrar horário</h2>
@@ -25,12 +25,12 @@
 
             <div class="campo">
                 <label for="hora-inicio">Início</label>
-                <input type="time" id="hora-inicio" name="hora_inicio" required>
+                <input type="time" step="900" id="hora-inicio" name="hora_inicio" required>
             </div>
 
             <div class="campo">
                 <label for="hora-fim">Fim</label>
-                <input type="time" id="hora-fim" name="hora_fim" required>
+                <input type="time" step="900" id="hora-fim" name="hora_fim" required>
             </div>
 
             <button type="submit" class="botao">Cadastrar</button>

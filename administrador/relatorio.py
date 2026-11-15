@@ -70,7 +70,7 @@ def ja_aconteceu(agora):
     Mesma regra de interface_aluno.disponibilidade.ja_terminou, mas escrita para o banco.
     """
     hoje = agora.date()
-    return Q(data__lt=hoje) | Q(data=hoje, horario__hora_fim__lte=agora.time())
+    return Q(data__lt=hoje) | Q(data=hoje, hora_fim__lte=agora.time())
 
 
 def resumo(qs, agora):

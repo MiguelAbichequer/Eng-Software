@@ -53,6 +53,10 @@ class Monitor(models.Model): #representa uma tabela no banco de dados
     def __str__(self):
         return self.nome
 
+#tamanho de cada "bloco" que o aluno reserva dentro de um horário
+MINUTOS_BLOCO = 15
+
+
 class DiasSemana(models.IntegerChoices): # permite criar uma enumeração, relacionando dias com números.
     SEGUNDA = 0, "Segunda-feira"
     TERCA   = 1, "Terça-feira"
@@ -74,6 +78,14 @@ class Horario(models.Model):
     def clean(self):
         if self.hora_inicio and self.hora_fim and self.hora_fim <= self.hora_inicio:
             raise ValidationError('O horário final deve ser depois do inicial.')
+
+        #o aluno reserva em blocos de 15 minutos, então o horário precisa começar e
+        #terminar em um múltiplo de 15 (14:00, 14:15, 14:30, 14:45)
+        for hora in (self.hora_inicio, self.hora_fim):
+            if hora and (hora.minute % MINUTOS_BLOCO or hora.second):
+                raise ValidationError(
+                    f'Use horários em múltiplos de {MINUTOS_BLOCO} minutos (por exemplo, 14:00, 14:15, 14:30 ou 14:45).'
+                )
 
         # não deve haver sobreposição de horários para o mesmo monitor no mesmo dia da semana
         # (dois intervalos se sobrepõem quando cada um começa antes de o outro terminar)
@@ -98,19 +110,21 @@ class Solicitacao(models.Model):
     aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, related_name='solicitacoes')
     horario = models.ForeignKey(Horario, on_delete=models.CASCADE, related_name='solicitacoes')
     data = models.DateField()
+    #o trecho reservado dentro do horário: um ou mais blocos de 15 minutos seguidos
+    #(ex.: horário 14:00-16:00, reserva 14:30-15:00 = dois blocos)
+    hora_inicio = models.TimeField()
+    hora_fim = models.TimeField()
     assunto = models.CharField(max_length=200)
     formato = models.CharField(max_length=10, choices=FORMATOS)
     participantes = models.CharField(max_length=10, choices=PARTICIPANTES)
     criada_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            #vários alunos podem reservar o mesmo horário na mesma data (a monitoria é um
-            #encontro aberto), mas o mesmo aluno não reserva o mesmo horário duas vezes
-            models.UniqueConstraint(
-                fields=['aluno', 'horario', 'data'], name='uma_solicitacao_por_aluno_horario_e_data',
-            ),
-        ]
+        #não há restrição de unicidade aqui: duas reservas não podem se sobrepor no mesmo
+        #horário e data, mas isso é uma regra de intervalos (14:00-14:30 x 14:15-14:45),
+        #que o banco não confere sozinho. Quem garante é interface_aluno/reservas.py,
+        #que trava o horário durante a reserva para dois alunos não pegarem o mesmo bloco.
+        ordering = ['data', 'hora_inicio']
 
     def __str__(self):
-        return f"{self.aluno} -> {self.horario} em {self.data:%d/%m/%Y}"
+        return f"{self.aluno} -> {self.horario.monitor} em {self.data:%d/%m/%Y}, {self.hora_inicio:%H:%M}-{self.hora_fim:%H:%M}"

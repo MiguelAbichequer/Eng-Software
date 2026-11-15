@@ -51,7 +51,7 @@ def relatorio_csv(request):
     solicitacoes = (
         relatorio.solicitacoes_do_periodo(periodo, monitor.id if monitor else None)
         .select_related('aluno', 'horario__monitor')
-        .order_by('data', 'horario__hora_inicio')
+        .order_by('data', 'hora_inicio')
     )
 
     nome = f'relatorio_{periodo.inicio:%Y-%m-%d}_a_{periodo.fim:%Y-%m-%d}.csv'
@@ -68,8 +68,8 @@ def relatorio_csv(request):
     for s in solicitacoes:
         escritor.writerow([
             f'{s.data:%d/%m/%Y}',
-            f'{s.horario.hora_inicio:%H:%M}',
-            f'{s.horario.hora_fim:%H:%M}',
+            f'{s.hora_inicio:%H:%M}',
+            f'{s.hora_fim:%H:%M}',
             s.horario.monitor.nome,
             s.aluno.nome,
             s.aluno.matricula,

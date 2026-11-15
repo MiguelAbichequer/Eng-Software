@@ -86,7 +86,7 @@
                         {% for s in proximas %}
                             <tr>
                                 <td class="sem-quebra">{{ s.data|date:"D, d/m" }}</td>
-                                <td class="sem-quebra">{{ s.horario.hora_inicio|time:"H:i" }}&ndash;{{ s.horario.hora_fim|time:"H:i" }}</td>
+                                <td class="sem-quebra">{{ s.hora_inicio|time:"H:i" }}&ndash;{{ s.hora_fim|time:"H:i" }}</td>
                                 <td>{% if tipo == 'monitor' %}<a href="{% url 'usuario' 'aluno' s.aluno.id %}">{{ s.aluno.nome }}</a>{% else %}<a href="{% url 'usuario' 'monitor' s.horario.monitor.id %}">{{ s.horario.monitor.nome }}</a>{% endif %}</td>
                                 <td>{{ s.assunto }}</td>
                                 <td>{{ s.get_formato_display }}, {{ s.get_participantes_display|lower }}</td>
@@ -117,7 +117,7 @@
                         {% for s in anteriores %}
                             <tr>
                                 <td class="sem-quebra">{{ s.data|date:"d/m/Y" }}</td>
-                                <td class="sem-quebra">{{ s.horario.hora_inicio|time:"H:i" }}&ndash;{{ s.horario.hora_fim|time:"H:i" }}</td>
+                                <td class="sem-quebra">{{ s.hora_inicio|time:"H:i" }}&ndash;{{ s.hora_fim|time:"H:i" }}</td>
                                 <td>{% if tipo == 'monitor' %}{{ s.aluno.nome }}{% else %}{{ s.horario.monitor.nome }}{% endif %}</td>
                                 <td>{{ s.assunto }}</td>
                             </tr>
