@@ -41,6 +41,12 @@ class Monitor(models.Model): #representa uma tabela no banco de dados
     STATUS = [(DISPONIVEL, 'Disponível'), (EM_ATENDIMENTO, 'Em atendimento'), (INDISPONIVEL, 'Indisponível')]
     status = models.CharField(max_length=14, choices=STATUS, default=INDISPONIVEL)
 
+    #aprovação pelo administrador: quem se cadastra pela página inicial fica com
+    #aprovado=False e não consegue entrar nem aparece para os alunos até o administrador
+    #aprovar (administrador/views.py). Quem o administrador cadastra pelo /admin/ já nasce aprovado.
+    aprovado = models.BooleanField(default=True)
+    cadastrado_em = models.DateTimeField(auto_now_add=True, null=True)
+
     #expulsão feita pelo administrador. Não apaga a conta (o histórico continua no relatório):
     #só impede o login e esconde a pessoa do sistema. Vazio = conta ativa.
     expulso_em = models.DateTimeField(null=True, blank=True)

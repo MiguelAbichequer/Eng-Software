@@ -1,0 +1,47 @@
+{% extends 'administrador/base.html' %}
+
+{% block titulo %}Solicitações de monitor{% endblock %}
+{% block menu_solicitacoes %}aria-current="page"{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Solicitações de monitor</h1>
+    <p class="subtitulo">Cadastros feitos pela página inicial. Até serem aprovados, esses monitores não entram no sistema nem aparecem para os alunos.</p>
+
+    {% if pendentes %}
+        <ul class="pedidos">
+            {% for m in pendentes %}
+                <li class="pedido">
+                    <div class="pedido-dados">
+                        <strong>{{ m.nome }}</strong>
+                        <span>Matrícula {{ m.matricula }}</span>
+                        <span class="nota">
+                            {% if m.cadastrado_em %}Cadastro em {{ m.cadastrado_em|date:"d/m/Y" }} às {{ m.cadastrado_em|time:"H:i" }}{% endif %}
+                            {% with ds=m.disciplinas.all %}{% if ds %} &middot; {% for d in ds %}{{ d.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% endwith %}
+                        </span>
+                    </div>
+                    <div class="pedido-acoes">
+                        <form method="post" action="{% url 'monitor_aprovar' m.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="botao">Aprovar</button>
+                        </form>
+                        {# <details> pede um segundo clique antes de apagar #}
+                        <details class="confirmar">
+                            <summary class="botao botao-secundario">Recusar</summary>
+                            <form method="post" action="{% url 'monitor_recusar' m.id %}">
+                                {% csrf_token %}
+                                <p>O cadastro será apagado. A pessoa pode se cadastrar de novo depois.</p>
+                                <button type="submit" class="botao botao-perigo">Confirmar recusa</button>
+                            </form>
+                        </details>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="vazio">
+            <p>Nenhuma solicitação pendente.</p>
+        </div>
+    {% endif %}
+
+{% endblock %}

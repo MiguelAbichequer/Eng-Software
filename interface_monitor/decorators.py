@@ -22,8 +22,8 @@ def monitor_logado(view):
             request.session.flush()
             return redirect('home')
 
-        if request.monitor.expulso:
-            #expulso pelo administrador com a sessão ainda aberta: desconecta na hora
+        if request.monitor.expulso or not request.monitor.aprovado:
+            #expulso (ou ainda sem aprovação) com a sessão aberta: desconecta na hora
             request.session.flush()
             return redirect(reverse('home') + '?suspenso=1')
 

@@ -40,7 +40,9 @@ class CadastroTests(TestCase):
                 self.assertNotEqual(novo.senha, 'abc123')
 
                 pagina = self.client.get(r['Location'])
-                self.assertContains(pagina, 'Cadastro feito, Ana!')
+                #o monitor ainda precisa da aprovação do administrador
+                confirmacao = 'Cadastro enviado, Ana!' if papel == 'monitor' else 'Cadastro feito, Ana!'
+                self.assertContains(pagina, confirmacao)
                 self.assertContains(pagina, f'value="{papel}" checked')
 
     def test_matricula_repetida_mostra_erro_em_vez_de_quebrar(self):

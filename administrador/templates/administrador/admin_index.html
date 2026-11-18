@@ -10,6 +10,10 @@
         &mdash; por dia, horários mais reservados, totais por monitor e exportação em CSV.
     </p>
     <p style="padding: 0 16px 8px; margin: 0;">
+        <a href="{% url 'monitores_pendentes' %}"><strong>Solicitações de monitor</strong></a>
+        &mdash; {% if monitores_pendentes_total %}{{ monitores_pendentes_total }} cadastro{{ monitores_pendentes_total|pluralize }} esperando aprovação.{% else %}nenhum cadastro esperando aprovação.{% endif %}
+    </p>
+    <p style="padding: 0 16px 8px; margin: 0;">
         <a href="{% url 'usuarios' %}"><strong>Usuários</strong></a>
         &mdash; consultar alunos e monitores, ver os atendimentos de cada um, expulsar e readmitir.
     </p>

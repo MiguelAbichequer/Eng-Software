@@ -60,6 +60,8 @@
                             <td>
                                 {% if l.usuario.expulso %}
                                     <span class="selo selo-expulso">Expulso</span>
+                                {% elif l.tipo == 'monitor' and not l.usuario.aprovado %}
+                                    <a class="selo selo-pendente" href="{% url 'monitores_pendentes' %}">Aguardando aprovação</a>
                                 {% else %}
                                     <span class="selo selo-ativo">Ativo</span>
                                 {% endif %}

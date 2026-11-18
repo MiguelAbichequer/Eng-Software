@@ -17,7 +17,8 @@ class DisciplinaAdmin(admin.ModelAdmin):
 
 @admin.register(Monitor)
 class MonitorAdmin(admin.ModelAdmin):
-    list_display = ['nome', 'matricula']
+    list_display = ['nome', 'matricula', 'aprovado']
+    list_filter = ['aprovado']
     search_fields = ['nome', 'matricula']
     filter_horizontal = ['disciplinas']
     inlines = [HorarioInline]

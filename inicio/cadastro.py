@@ -32,11 +32,12 @@ def validar(modelo, matricula, nome, senha):
     return None
 
 
-def cadastrar(request, modelo, papel):
+def cadastrar(request, modelo, papel, precisa_aprovacao=False):
     """
     Mostra e processa o formulário de cadastro.
 
     modelo: Aluno ou Monitor.  papel: 'aluno' ou 'monitor' (usado nos textos e no login).
+    precisa_aprovacao: a conta nasce bloqueada até o administrador aprovar (monitor).
     """
     dados = {'matricula': '', 'nome': ''}
     erro = None
@@ -52,10 +53,19 @@ def cadastrar(request, modelo, papel):
         if erro is None:
             try:
                 with transaction.atomic():
-                    modelo.objects.create(matricula=matricula, nome=nome, senha=make_password(senha))
+                    extras = {'aprovado': False} if precisa_aprovacao else {}
+                    modelo.objects.create(matricula=matricula, nome=nome, senha=make_password(senha), **extras)
             except IntegrityError:
                 #outra pessoa cadastrou a mesma matrícula no mesmo instante
                 erro = 'Já existe um cadastro com essa matrícula. Se é você, é só entrar.'
+
+        if erro is None and precisa_aprovacao:
+            messages.success(
+                request,
+                f'Cadastro enviado, {nome.split()[0]}! Um administrador precisa aprovar o seu cadastro '
+                'de monitor antes de você conseguir entrar.',
+            )
+            return redirect(f"{reverse('home')}?tipo={papel}")
 
         if erro is None:
             messages.success(

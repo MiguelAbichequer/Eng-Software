@@ -28,8 +28,8 @@ def painel(request):
     disciplina_id = request.GET.get('disciplina', '')
     disponibilidade = request.GET.get('disponibilidade', '')
 
-    #monitores expulsos pelo administrador não aparecem para os alunos
-    monitores = Monitor.objects.filter(expulso_em__isnull=True).prefetch_related('disciplinas', 'horarios')
+    #monitores expulsos ou ainda não aprovados pelo administrador não aparecem para os alunos
+    monitores = Monitor.objects.filter(expulso_em__isnull=True, aprovado=True).prefetch_related('disciplinas', 'horarios')
     if nome:
         monitores = monitores.filter(nome__icontains=nome)
     if disciplina_id.isdigit():
@@ -54,7 +54,7 @@ def painel(request):
         'resumos': resumos,
         #só oferece no filtro as disciplinas que têm pelo menos um monitor ativo
         'disciplinas': Disciplina.objects.filter(
-            monitores__isnull=False, monitores__expulso_em__isnull=True,
+            monitores__isnull=False, monitores__expulso_em__isnull=True, monitores__aprovado=True,
         ).distinct(),
         'filtros': {'nome': nome, 'disciplina': disciplina_id, 'disponibilidade': disponibilidade},
         'filtrando': bool(nome or disciplina_id or disponibilidade),
@@ -66,7 +66,7 @@ def painel(request):
 def monitor_detalhe(request, monitor_id):
     """Tela do monitor escolhido: status atual e os blocos de horário para reservar."""
     monitor = get_object_or_404(
-        Monitor.objects.prefetch_related('disciplinas', 'horarios'), pk=monitor_id, expulso_em__isnull=True,
+        Monitor.objects.prefetch_related('disciplinas', 'horarios'), pk=monitor_id, expulso_em__isnull=True, aprovado=True,
     )
 
     agora = agora_local()
@@ -106,7 +106,7 @@ def solicitar_horario(request, horario_id):
     """Reserva os blocos marcados. O agendamento é imediato: eles já ficam bloqueados para os outros."""
     #horário de monitor expulso não pode mais ser solicitado (vira 404)
     horario = get_object_or_404(
-        Horario.objects.select_related('monitor'), pk=horario_id, monitor__expulso_em__isnull=True,
+        Horario.objects.select_related('monitor'), pk=horario_id, monitor__expulso_em__isnull=True, monitor__aprovado=True,
     )
     voltar = redirect('monitor_detalhe', monitor_id=horario.monitor_id)
 

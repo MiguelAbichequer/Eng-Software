@@ -173,3 +173,48 @@ def readmitir_view(request, tipo, usuario_id):
         usuarios.readmitir(usuario)
         messages.success(request, f'{usuario.nome} foi readmitido e já pode entrar no sistema.')
     return redirect('usuario', tipo=tipo, usuario_id=usuario.id)
+
+
+# ---------------------------------------------------------------------------
+# Aprovação de monitores
+# ---------------------------------------------------------------------------
+
+def _monitor_pendente(monitor_id):
+    #só monitores ainda não aprovados (e não expulsos) entram nesta fila
+    return get_object_or_404(Monitor, pk=monitor_id, aprovado=False, expulso_em__isnull=True)
+
+
+@staff_member_required
+def monitores_pendentes_view(request):
+    """Fila de cadastros de monitor esperando aprovação, dos mais antigos para os mais novos."""
+    pendentes = (
+        Monitor.objects.filter(aprovado=False, expulso_em__isnull=True)
+        .prefetch_related('disciplinas')
+        .order_by('cadastrado_em', 'nome')
+    )
+    return render(request, 'administrador/monitores_pendentes.html', {'pendentes': pendentes})
+
+
+@staff_member_required
+@require_POST
+def aprovar_monitor_view(request, monitor_id):
+    """Aprova o cadastro: o monitor passa a conseguir entrar e a aparecer para os alunos."""
+    monitor = _monitor_pendente(monitor_id)
+    monitor.aprovado = True
+    monitor.save(update_fields=['aprovado'])
+    messages.success(request, f'{monitor.nome} foi aprovado como monitor e já pode entrar no sistema.')
+    return redirect('monitores_pendentes')
+
+
+@staff_member_required
+@require_POST
+def recusar_monitor_view(request, monitor_id):
+    """
+    Recusa o cadastro apagando a conta. Como o monitor nunca foi aprovado, ele não tem
+    horários com reservas nem histórico; e a matrícula fica livre para um novo cadastro.
+    """
+    monitor = _monitor_pendente(monitor_id)
+    nome = monitor.nome
+    monitor.delete()
+    messages.success(request, f'O cadastro de {nome} foi recusado e apagado.')
+    return redirect('monitores_pendentes')

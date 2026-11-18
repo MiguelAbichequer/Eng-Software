@@ -213,6 +213,7 @@ h1 .selo { vertical-align: middle; margin-left: .5rem; }
 }
 .selo-ativo { color: var(--verde); background: var(--verde-fundo); border-color: var(--verde); }
 .selo-expulso { color: var(--erro); background: var(--erro-fundo); border-color: var(--erro); }
+.selo-pendente { color: #7f5400; background: #fbeccb; border-color: #7f5400; text-decoration: none; }
 
 .numeros-3 { grid-template-columns: repeat(3, 1fr); }
 
@@ -239,6 +240,7 @@ h1 .selo { vertical-align: middle; margin-left: .5rem; }
 .caixa p { margin: 0 0 .75rem; }
 .caixa form { margin: 0; }
 .caixa-expulso { background: var(--erro-fundo); border-color: var(--erro); }
+.caixa-pendente { background: #fbeccb; border-color: #7f5400; }
 .caixa-perigo { margin-top: 2.5rem; background: var(--superficie); border-color: var(--erro); }
 
 .form-expulsar { display: grid; gap: .75rem; max-width: 32rem; }
@@ -259,4 +261,47 @@ h1 .selo { vertical-align: middle; margin-left: .5rem; }
     .topo-menu { order: 3; flex-basis: 100%; margin-left: 0; }
     .numeros-3 { grid-template-columns: 1fr 1fr 1fr; }
     .tabela th, .tabela td { padding: .5rem .6rem; }
+}
+
+/* ---------- solicitações pendentes ---------- */
+
+/* número no menu: "Solicitações 2" */
+.contador {
+    display: inline-block;
+    min-width: 1.3rem;
+    padding: 0 .35rem;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--azul-escuro);
+    font-size: .8rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.pedidos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
+
+.pedido {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+}
+
+.pedido-dados { display: flex; flex-direction: column; gap: .15rem; }
+.pedido-dados .nota { margin: 0; }
+.pedido-acoes { display: flex; gap: .5rem; align-items: flex-start; }
+.pedido-acoes form { margin: 0; }
+
+.confirmar summary { list-style: none; cursor: pointer; }
+.confirmar summary::-webkit-details-marker { display: none; }
+.confirmar[open] summary { margin-bottom: .5rem; }
+.confirmar form { max-width: 16rem; }
+.confirmar p { margin: 0 0 .5rem; font-size: .9rem; }
+
+@media (max-width: 720px) {
+    .pedido { flex-direction: column; }
 }

@@ -306,3 +306,97 @@ class EfeitosDaExpulsaoTests(BaseTeste):
         self.entrar_admin()
         r = self.client.get(reverse('relatorio'), {'inicio': '2026-10-01', 'fim': '2026-11-30'})
         self.assertEqual(r.context['resumo']['total'], 1)
+
+
+class AprovacaoDeMonitorTests(BaseTeste):
+    """Monitor que se cadastra pela página inicial só vale depois da aprovação do administrador."""
+
+    def cadastrar_monitor(self, matricula='m9', nome='Diego Novo'):
+        self.client.post(reverse('cadastro_monitor'), {'matricula': matricula, 'nome': nome, 'senha': 'segredo'})
+        return Monitor.objects.get(matricula=matricula)
+
+    def entrar_como_monitor(self, matricula='m9'):
+        return self.client.post('/', {'tipo': 'monitor', 'username': matricula, 'password': 'segredo'})
+
+    def test_cadastro_pela_pagina_inicial_fica_aguardando(self):
+        novo = self.cadastrar_monitor()
+        self.assertFalse(novo.aprovado)
+        self.assertIsNotNone(novo.cadastrado_em)
+
+    def test_monitor_criado_pelo_codigo_ou_admin_ja_e_aprovado(self):
+        self.assertTrue(self.monitor.aprovado)
+
+    def test_aguardando_nao_consegue_entrar(self):
+        self.cadastrar_monitor()
+        r = self.entrar_como_monitor()
+        self.assertContains(r, 'aguardando a aprovação')
+        self.assertNotIn('monitor_id', self.client.session)
+
+    def test_senha_errada_nao_revela_que_esta_aguardando(self):
+        self.cadastrar_monitor()
+        r = self.client.post('/', {'tipo': 'monitor', 'username': 'm9', 'password': 'errada'})
+        self.assertContains(r, 'Senha incorreta')
+        self.assertNotContains(r, 'aguardando')
+
+    def test_aguardando_nao_aparece_para_os_alunos(self):
+        novo = self.cadastrar_monitor()
+        Horario.objects.create(monitor=novo, dia_semana=QUARTA, hora_inicio=time(16), hora_fim=time(17))
+        sessao = self.client.session
+        sessao['aluno_id'] = self.aluno.id
+        sessao.save()
+        painel = self.client.get(reverse('painel'))
+        self.assertNotIn(novo, [r.monitor for r in painel.context['resumos']])
+        self.assertEqual(self.client.get(reverse('monitor_detalhe', args=[novo.id])).status_code, 404)
+
+    def test_fila_lista_os_pendentes_e_o_menu_mostra_o_numero(self):
+        self.cadastrar_monitor()
+        self.entrar_admin()
+        r = self.client.get(reverse('monitores_pendentes'))
+        self.assertEqual([m.nome for m in r.context['pendentes']], ['Diego Novo'])
+        self.assertContains(r, 'class="contador"')
+        self.assertNotContains(r, 'Carla')  #já aprovado: não aparece na fila
+
+    def test_aprovar_libera_o_login(self):
+        novo = self.cadastrar_monitor()
+        self.entrar_admin()
+        r = self.client.post(reverse('monitor_aprovar', args=[novo.id]), follow=True)
+        self.assertContains(r, 'foi aprovado como monitor')
+        novo.refresh_from_db()
+        self.assertTrue(novo.aprovado)
+
+        self.client.logout()
+        self.assertRedirects(self.entrar_como_monitor(), reverse('monitor_painel'), fetch_redirect_response=False)
+
+    def test_recusar_apaga_o_cadastro_e_libera_a_matricula(self):
+        novo = self.cadastrar_monitor()
+        self.entrar_admin()
+        r = self.client.post(reverse('monitor_recusar', args=[novo.id]), follow=True)
+        self.assertContains(r, 'foi recusado e apagado')
+        self.assertFalse(Monitor.objects.filter(matricula='m9').exists())
+
+        self.client.logout()
+        self.assertFalse(self.cadastrar_monitor().aprovado)  #pode se cadastrar de novo
+
+    def test_so_vale_para_pendentes(self):
+        self.entrar_admin()
+        #monitor já aprovado não pode ser "recusado" (apagado) por esta tela
+        self.assertEqual(self.client.post(reverse('monitor_recusar', args=[self.monitor.id])).status_code, 404)
+        self.assertTrue(Monitor.objects.filter(pk=self.monitor.pk).exists())
+
+    def test_exige_administrador_e_post(self):
+        novo = self.cadastrar_monitor()
+        r = self.client.post(reverse('monitor_aprovar', args=[novo.id]))
+        self.assertIn(reverse('admin:login'), r['Location'])
+        novo.refresh_from_db()
+        self.assertFalse(novo.aprovado)
+
+        self.entrar_admin()
+        self.assertEqual(self.client.get(reverse('monitor_aprovar', args=[novo.id])).status_code, 405)
+
+    def test_lista_e_ficha_de_usuarios_mostram_aguardando(self):
+        novo = self.cadastrar_monitor()
+        self.entrar_admin()
+        self.assertContains(self.client.get(reverse('usuarios')), 'Aguardando aprovação')
+        ficha = self.client.get(reverse('usuario', args=['monitor', novo.id]))
+        self.assertContains(ficha, 'Cadastro aguardando aprovação')
+        self.assertContains(ficha, reverse('monitor_aprovar', args=[novo.id]))

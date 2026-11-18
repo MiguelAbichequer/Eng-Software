@@ -11,9 +11,30 @@
 
     <h1>
         {{ usuario.nome }}
-        {% if usuario.expulso %}<span class="selo selo-expulso">Expulso</span>{% else %}<span class="selo selo-ativo">Ativo</span>{% endif %}
+        {% if usuario.expulso %}<span class="selo selo-expulso">Expulso</span>{% elif tipo == 'monitor' and not usuario.aprovado %}<span class="selo selo-pendente">Aguardando aprovação</span>{% else %}<span class="selo selo-ativo">Ativo</span>{% endif %}
     </h1>
     <p class="subtitulo">{% if tipo == 'monitor' %}Monitor{% else %}Aluno{% endif %} &middot; matrícula {{ usuario.matricula }}</p>
+
+    {% if tipo == 'monitor' and not usuario.aprovado and not usuario.expulso %}
+        <section class="caixa caixa-pendente" aria-labelledby="titulo-pendente">
+            <h2 id="titulo-pendente">Cadastro aguardando aprovação</h2>
+            <p>Este monitor se cadastrou pela página inicial e ainda não consegue entrar nem aparece para os alunos.</p>
+            <div class="pedido-acoes">
+                <form method="post" action="{% url 'monitor_aprovar' usuario.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="botao">Aprovar</button>
+                </form>
+                <details class="confirmar">
+                    <summary class="botao botao-secundario">Recusar</summary>
+                    <form method="post" action="{% url 'monitor_recusar' usuario.id %}">
+                        {% csrf_token %}
+                        <p>O cadastro será apagado. A pessoa pode se cadastrar de novo depois.</p>
+                        <button type="submit" class="botao botao-perigo">Confirmar recusa</button>
+                    </form>
+                </details>
+            </div>
+        </section>
+    {% endif %}
 
     {% if usuario.expulso %}
         <section class="caixa caixa-expulso" aria-labelledby="titulo-expulsao">
