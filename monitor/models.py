@@ -46,6 +46,9 @@ class Monitor(models.Model): #representa uma tabela no banco de dados
     #aprovar (administrador/views.py). Quem o administrador cadastra pelo /admin/ já nasce aprovado.
     aprovado = models.BooleanField(default=True)
     cadastrado_em = models.DateTimeField(auto_now_add=True, null=True)
+    #documento de confirmação enviado no cadastro pela página inicial (igual ao do aluno).
+    #Fica em MEDIA_ROOT e só o administrador consegue abrir (administrador/views.py).
+    documento_confirmacao = models.FileField(upload_to='documentos_monitores/%Y/%m/', blank=True)
 
     #expulsão feita pelo administrador. Não apaga a conta (o histórico continua no relatório):
     #só impede o login e esconde a pessoa do sistema. Vazio = conta ativa.

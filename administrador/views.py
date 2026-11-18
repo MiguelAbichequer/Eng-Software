@@ -214,11 +214,13 @@ def aprovar_monitor_view(request, monitor_id):
 @require_POST
 def recusar_monitor_view(request, monitor_id):
     """
-    Recusa o cadastro apagando a conta. Como o monitor nunca foi aprovado, ele não tem
-    horários com reservas nem histórico; e a matrícula fica livre para um novo cadastro.
+    Recusa o cadastro apagando a conta e o documento enviado. Como o monitor nunca foi aprovado,
+    ele não tem horários com reservas nem histórico; e a matrícula fica livre para um novo cadastro.
     """
     monitor = _monitor_pendente(monitor_id)
     nome = monitor.nome
+    if monitor.documento_confirmacao:
+        monitor.documento_confirmacao.delete(save=False)
     monitor.delete()
     messages.success(request, f'O cadastro de {nome} foi recusado e apagado.')
     return redirect('monitores_pendentes')
@@ -243,21 +245,29 @@ def alunos_pendentes_view(request):
     return render(request, 'administrador/alunos_pendentes.html', {'pendentes': pendentes})
 
 
-@staff_member_required
-def documento_aluno_view(request, aluno_id):
+def _abrir_documento(cadastro):
     """
-    Abre o documento de confirmação enviado pelo aluno, dentro do próprio sistema.
+    Abre o documento de confirmação de um cadastro (aluno ou monitor), dentro do próprio sistema.
     O arquivo não tem URL pública: só quem está logado como administrador chega até aqui.
     """
-    aluno = get_object_or_404(Aluno, pk=aluno_id)
-    if not aluno.documento_confirmacao:
+    if not cadastro.documento_confirmacao:
         raise Http404('Este cadastro não tem documento.')
     try:
-        arquivo = aluno.documento_confirmacao.open('rb')
+        arquivo = cadastro.documento_confirmacao.open('rb')
     except FileNotFoundError:
         raise Http404('O arquivo do documento não foi encontrado.')
     #inline: abre no navegador em vez de baixar; o nome do arquivo vem do cadastro
-    return FileResponse(arquivo, as_attachment=False, filename=aluno.documento_confirmacao.name.rsplit('/', 1)[-1])
+    return FileResponse(arquivo, as_attachment=False, filename=cadastro.documento_confirmacao.name.rsplit('/', 1)[-1])
+
+
+@staff_member_required
+def documento_aluno_view(request, aluno_id):
+    return _abrir_documento(get_object_or_404(Aluno, pk=aluno_id))
+
+
+@staff_member_required
+def documento_monitor_view(request, monitor_id):
+    return _abrir_documento(get_object_or_404(Monitor, pk=monitor_id))
 
 
 @staff_member_required

@@ -317,8 +317,20 @@ class EfeitosDaExpulsaoTests(BaseTeste):
 class AprovacaoDeMonitorTests(BaseTeste):
     """Monitor que se cadastra pela página inicial só vale depois da aprovação do administrador."""
 
+    def setUp(self):
+        super().setUp()
+        #os documentos enviados no cadastro vão para uma pasta temporária
+        pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, pasta, True)
+        override = override_settings(MEDIA_ROOT=pasta)
+        override.enable()
+        self.addCleanup(override.disable)
+
     def cadastrar_monitor(self, matricula='m9', nome='Diego Novo'):
-        self.client.post(reverse('cadastro_monitor'), {'matricula': matricula, 'nome': nome, 'senha': 'segredo'})
+        documento = SimpleUploadedFile('diploma.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
+        self.client.post(reverse('cadastro_monitor'), {
+            'matricula': matricula, 'nome': nome, 'senha': 'segredo', 'documento': documento,
+        })
         return Monitor.objects.get(matricula=matricula)
 
     def entrar_como_monitor(self, matricula='m9'):
@@ -588,3 +600,40 @@ class AprovacaoAlunoTests(TestCase):
         self.client.force_login(self.admin)
         r = self.client.get(reverse('alunos_pendentes'))
         self.assertEqual(r.context['alunos_pendentes_total'], 1)
+
+
+class AprovacaoMonitorDocumentoTests(TestCase):
+    """O monitor também envia documento de confirmação, conferido pelo administrador."""
+
+    def setUp(self):
+        pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, pasta, True)
+        override = override_settings(MEDIA_ROOT=pasta)
+        override.enable()
+        self.addCleanup(override.disable)
+
+        self.admin = User.objects.create_user('admin', password='x', is_staff=True)
+        self.pendente = Monitor.objects.create(
+            matricula='mp1', nome='Marcos', senha=HASH, aprovado=False,
+            documento_confirmacao=SimpleUploadedFile('diploma.pdf', b'%PDF-1.4 monitor', content_type='application/pdf'),
+        )
+
+    def test_documento_do_monitor_so_abre_para_o_administrador(self):
+        url = reverse('monitor_documento', args=[self.pendente.id])
+        self.assertNotEqual(self.client.get(url).status_code, 200)
+        self.client.force_login(self.admin)
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(b''.join(r.streaming_content), b'%PDF-1.4 monitor')
+
+    def test_fila_de_monitor_mostra_o_link_do_documento(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse('monitores_pendentes'))
+        self.assertContains(r, reverse('monitor_documento', args=[self.pendente.id]))
+
+    def test_recusar_monitor_apaga_o_documento(self):
+        caminho = self.pendente.documento_confirmacao.path
+        self.client.force_login(self.admin)
+        self.client.post(reverse('monitor_recusar', args=[self.pendente.id]))
+        self.assertFalse(Monitor.objects.filter(pk=self.pendente.pk).exists())
+        self.assertFalse(os.path.exists(caminho))

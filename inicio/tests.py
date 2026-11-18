@@ -33,8 +33,8 @@ class CadastroTests(TestCase):
 
     def enviar(self, rota, **dados):
         campos = {'matricula': '2024001', 'nome': 'Ana Ribeiro', 'senha': 'abc123'}
-        #o aluno envia um documento de confirmação; o monitor não
-        if rota == 'cadastro_aluno':
+        #aluno e monitor enviam um documento de confirmação
+        if rota in ('cadastro_aluno', 'cadastro_monitor'):
             campos['documento'] = self.documento_valido()
         campos.update(dados)
         return self.client.post(reverse(rota), campos)
@@ -133,12 +133,17 @@ class CadastroTests(TestCase):
         self.assertTrue(aluno.documento_confirmacao.storage.exists(aluno.documento_confirmacao.name))
         self.assertIsNotNone(aluno.cadastrado_em)
 
-    def test_formulario_de_aluno_pede_documento_e_o_de_monitor_nao(self):
-        r = self.client.get(reverse('cadastro_aluno'))
-        self.assertContains(r, 'type="file"')
-        self.assertContains(r, 'enctype="multipart/form-data"')
-        r = self.client.get(reverse('cadastro_monitor'))
-        self.assertNotContains(r, 'type="file"')
+    def test_formulario_de_aluno_e_de_monitor_pedem_documento(self):
+        for rota in ('cadastro_aluno', 'cadastro_monitor'):
+            with self.subTest(rota):
+                r = self.client.get(reverse(rota))
+                self.assertContains(r, 'type="file"')
+                self.assertContains(r, 'enctype="multipart/form-data"')
+
+    def test_monitor_sem_documento_e_recusado(self):
+        r = self.client.post(reverse('cadastro_monitor'), {'matricula': '2024001', 'nome': 'Ana', 'senha': 'abc123'})
+        self.assertContains(r, 'Envie o documento de confirmação')
+        self.assertFalse(Monitor.objects.exists())
 
 
 class AlunoAguardandoAprovacaoTests(TestCase):

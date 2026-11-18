@@ -1,10 +1,12 @@
+import tempfile
 from datetime import date, datetime, time
 from unittest.mock import patch
 
 from django.contrib import admin
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
-from django.test import Client, RequestFactory, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -97,7 +99,11 @@ class LoginTests(BaseTeste):
         self.assertNotIn('aluno_id', self.client.session)
 
     def test_cadastro_do_monitor_guarda_senha_com_hash(self):
-        self.client.post('/monitor/cadastro/', {'matricula': 'm9', 'nome': 'Novo', 'senha': 'abc123'})
+        documento = SimpleUploadedFile('diploma.pdf', b'%PDF-1.4 teste', content_type='application/pdf')
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            self.client.post('/monitor/cadastro/', {
+                'matricula': 'm9', 'nome': 'Novo', 'senha': 'abc123', 'documento': documento,
+            })
         novo = Monitor.objects.get(matricula='m9')
         self.assertNotEqual(novo.senha, 'abc123')
         self.assertTrue(check_password('abc123', novo.senha))

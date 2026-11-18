@@ -6,7 +6,7 @@
 {% block conteudo %}
 
     <h1>Solicitações de monitor</h1>
-    <p class="subtitulo">Cadastros feitos pela página inicial. Até serem aprovados, esses monitores não entram no sistema nem aparecem para os alunos.</p>
+    <p class="subtitulo">Cadastros feitos pela página inicial. Confira o documento de confirmação antes de aprovar. Até serem aprovados, esses monitores não entram no sistema nem aparecem para os alunos.</p>
 
     {% if pendentes %}
         <ul class="pedidos">
@@ -21,6 +21,11 @@
                         </span>
                     </div>
                     <div class="pedido-acoes">
+                        {% if m.documento_confirmacao %}
+                            <a class="botao botao-secundario" href="{% url 'monitor_documento' m.id %}" target="_blank" rel="noopener">Ver documento</a>
+                        {% else %}
+                            <span class="nota">Sem documento anexado</span>
+                        {% endif %}
                         <form method="post" action="{% url 'monitor_aprovar' m.id %}">
                             {% csrf_token %}
                             <button type="submit" class="botao">Aprovar</button>
@@ -30,7 +35,7 @@
                             <summary class="botao botao-secundario">Recusar</summary>
                             <form method="post" action="{% url 'monitor_recusar' m.id %}">
                                 {% csrf_token %}
-                                <p>O cadastro será apagado. A pessoa pode se cadastrar de novo depois.</p>
+                                <p>O cadastro e o documento enviado serão apagados. A pessoa pode se cadastrar de novo depois.</p>
                                 <button type="submit" class="botao botao-perigo">Confirmar recusa</button>
                             </form>
                         </details>
