@@ -89,6 +89,29 @@
         </section>
     {% endif %}
 
+    {% if denuncias %}
+        <section aria-labelledby="titulo-denuncias">
+            <h2 id="titulo-denuncias">Denúncias recebidas</h2>
+            <div class="rolagem">
+                <table class="tabela">
+                    <thead>
+                        <tr><th scope="col">Data</th><th scope="col">Monitor</th><th scope="col">Motivo</th><th scope="col">Situação</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for d in denuncias %}
+                            <tr>
+                                <td class="sem-quebra">{{ d.criada_em|date:"d/m/Y" }}</td>
+                                <td>{{ d.monitor.nome|default:"monitor apagado" }}</td>
+                                <td>{{ d.motivo }}</td>
+                                <td class="sem-quebra">{% if d.pendente %}<a href="{% url 'denuncias' %}">Pendente</a>{% else %}{{ d.get_situacao_display }}{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
     <section aria-labelledby="titulo-proximos">
         <h2 id="titulo-proximos">Próximos atendimentos</h2>
         {% if proximas %}

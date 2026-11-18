@@ -6,6 +6,9 @@ urlpatterns = [
     path('relatorio/csv/', views.relatorio_csv, name='relatorio_csv'),
     path('usuarios/', views.usuarios_view, name='usuarios'),
     path('solicitacoes-de-monitor/', views.monitores_pendentes_view, name='monitores_pendentes'),
+    path('denuncias/', views.denuncias_view, name='denuncias'),
+    path('denuncias/<int:denuncia_id>/expulsar/', views.expulsar_por_denuncia_view, name='denuncia_expulsar'),
+    path('denuncias/<int:denuncia_id>/arquivar/', views.arquivar_denuncia_view, name='denuncia_arquivar'),
     path('solicitacoes-de-monitor/<int:monitor_id>/aprovar/', views.aprovar_monitor_view, name='monitor_aprovar'),
     path('solicitacoes-de-monitor/<int:monitor_id>/recusar/', views.recusar_monitor_view, name='monitor_recusar'),
     #<tipo> é 'aluno' ou 'monitor': são duas tabelas diferentes, então o id sozinho não basta

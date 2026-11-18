@@ -3,7 +3,7 @@
 <html lang="pt-br">
 
 {# Esqueleto das telas do administrador. Cada tela preenche "titulo" e "conteudo" #}
-{# e marca seu item do menu com aria-current (blocos menu_relatorio, menu_usuarios, menu_solicitacoes). #}
+{# e marca seu item do menu com aria-current (blocos menu_relatorio, menu_usuarios, menu_solicitacoes, menu_denuncias). #}
 
 <head>
     <meta charset="UTF-8">
@@ -25,7 +25,10 @@
                 <a href="{% url 'monitores_pendentes' %}" {% block menu_solicitacoes %}{% endblock %}>
                     Solicitações{% if monitores_pendentes_total %} <span class="contador" aria-label="{{ monitores_pendentes_total }} pendente{{ monitores_pendentes_total|pluralize }}">{{ monitores_pendentes_total }}</span>{% endif %}
                 </a>
-                <a href="{% url 'admin:index' %}">Cadastros (admin)</a>
+                <a href="{% url 'denuncias' %}" {% block menu_denuncias %}{% endblock %}>
+                    Denúncias{% if denuncias_pendentes_total %} <span class="contador" aria-label="{{ denuncias_pendentes_total }} pendente{{ denuncias_pendentes_total|pluralize }}">{{ denuncias_pendentes_total }}</span>{% endif %}
+                </a>
+                <a href="{% url 'admin:index' %}">Cadastros</a>
             </nav>
             <div class="topo-usuario">
                 <span>{{ request.user.get_username }}</span>

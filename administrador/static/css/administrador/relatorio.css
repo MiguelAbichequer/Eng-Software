@@ -41,7 +41,7 @@ a { color: var(--azul-escuro); }
 .topo { background: var(--azul-escuro); color: #fff; }
 
 .topo-conteudo {
-    max-width: 60rem;
+    max-width: 70rem;  /* mais largo que a página: o menu do administrador tem mais itens */
     margin: 0 auto;
     padding: .75rem 1rem;
     display: flex;
@@ -52,8 +52,9 @@ a { color: var(--azul-escuro); }
 
 .topo-marca { font-weight: 700; }
 
-.topo-menu { display: flex; gap: 1.25rem; flex: 1; margin-left: 1rem; }
-.topo-menu a { color: rgba(255, 255, 255, .85); text-decoration: none; border-bottom: 2px solid transparent; }
+.topo-menu { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; flex: 1; margin-left: 1rem; }
+/* nowrap: "Solicitações 2" não se separa do número */
+.topo-menu a { color: rgba(255, 255, 255, .85); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
 .topo-menu a:hover { color: #fff; }
 .topo-menu a[aria-current="page"] { color: #fff; font-weight: 700; border-bottom-color: #fff; }
 
@@ -305,3 +306,8 @@ h1 .selo { vertical-align: middle; margin-left: .5rem; }
 @media (max-width: 720px) {
     .pedido { flex-direction: column; }
 }
+
+/* ---------- denúncias ---------- */
+
+.denuncia-motivo { margin: .25rem 0; font-style: italic; }
+.pedido-acoes summary.botao-perigo { color: #fff; }

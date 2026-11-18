@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     'alunos', 
     'monitor',
     'inicio',
-    'login',
     'interface_aluno',
     'administrador',
     'interface_monitor',

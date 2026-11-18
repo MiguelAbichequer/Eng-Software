@@ -17,6 +17,8 @@ from django.utils import timezone
 from alunos.models import Aluno
 from monitor.models import Disciplina, DiasSemana, Horario, Monitor, Solicitacao
 
+from .models import Denuncia
+
 #quarta-feira, 04/11/2026, 10:30
 AGORA = timezone.make_aware(datetime(2026, 11, 4, 10, 30))
 HOJE = AGORA.date()
@@ -400,3 +402,117 @@ class AprovacaoDeMonitorTests(BaseTeste):
         ficha = self.client.get(reverse('usuario', args=['monitor', novo.id]))
         self.assertContains(ficha, 'Cadastro aguardando aprovação')
         self.assertContains(ficha, reverse('monitor_aprovar', args=[novo.id]))
+
+
+@patch('interface_monitor.views.agora_local', return_value=AGORA)
+class DenunciaTests(BaseTeste):
+    """O monitor denuncia um aluno; o administrador expulsa ou arquiva."""
+
+    def setUp(self):
+        super().setUp()
+        self.pedido(self.tarde_h)  #Ana tem um atendimento com Carla
+
+    def entrar_monitor(self, monitor=None):
+        sessao = self.client.session
+        sessao['monitor_id'] = (monitor or self.monitor).id
+        sessao.save()
+
+    def denunciar(self, aluno=None, motivo='Faltou sem avisar três vezes'):
+        return self.client.post(reverse('monitor_denunciar', args=[(aluno or self.aluno).id]), {'motivo': motivo}, follow=True)
+
+    # --- o monitor denuncia ---
+
+    def test_monitor_denuncia_um_aluno_que_ele_atendeu(self, _):
+        self.entrar_monitor()
+        r = self.denunciar(motivo='  Faltou   sem avisar ')
+        self.assertContains(r, 'Denúncia sobre Ana enviada ao administrador')
+        d = Denuncia.objects.get()
+        self.assertEqual((d.aluno, d.monitor, d.motivo, d.situacao), (self.aluno, self.monitor, 'Faltou sem avisar', 'pendente'))
+
+    def test_painel_do_monitor_oferece_denunciar(self, _):
+        self.entrar_monitor()
+        r = self.client.get(reverse('monitor_painel'))
+        self.assertContains(r, 'Denunciar aluno')
+        self.assertContains(r, reverse('monitor_denunciar', args=[self.aluno.id]))
+
+    def test_nao_denuncia_aluno_que_nunca_atendeu(self, _):
+        self.entrar_monitor()
+        r = self.client.post(reverse('monitor_denunciar', args=[self.outro_aluno.id]), {'motivo': 'x'})
+        self.assertEqual(r.status_code, 404)
+        self.assertFalse(Denuncia.objects.exists())
+
+    def test_motivo_vazio_ou_longo_e_recusado(self, _):
+        self.entrar_monitor()
+        self.assertContains(self.denunciar(motivo='   '), 'Explique o motivo')
+        self.assertContains(self.denunciar(motivo='x' * 501), 'no máximo 500')
+        self.assertFalse(Denuncia.objects.exists())
+
+    def test_denunciar_exige_monitor_logado_e_post(self, _):
+        r = self.client.post(reverse('monitor_denunciar', args=[self.aluno.id]), {'motivo': 'x'})
+        self.assertRedirects(r, reverse('home'), fetch_redirect_response=False)
+        self.entrar_monitor()
+        self.assertEqual(self.client.get(reverse('monitor_denunciar', args=[self.aluno.id])).status_code, 405)
+        self.assertFalse(Denuncia.objects.exists())
+
+    # --- o administrador decide ---
+
+    def criar(self, motivo='Desrespeitou o monitor'):
+        return Denuncia.objects.create(aluno=self.aluno, monitor=self.monitor, motivo=motivo)
+
+    def test_tela_lista_pendentes_e_o_menu_mostra_o_numero(self, _):
+        self.criar()
+        self.entrar_admin()
+        r = self.client.get(reverse('denuncias'))
+        self.assertEqual(len(r.context['pendentes']), 1)
+        self.assertContains(r, 'Desrespeitou o monitor')
+        self.assertContains(r, 'Denúncias <span class="contador"')
+
+    def test_expulsar_usa_a_expulsao_normal_e_resolve_as_pendentes_do_aluno(self, _):
+        d1, d2 = self.criar('Primeira'), self.criar('Segunda')
+        self.entrar_admin()
+        r = self.client.post(reverse('denuncia_expulsar', args=[d1.id]), follow=True)
+        self.assertContains(r, 'Ana foi expulso')
+        self.aluno.refresh_from_db()
+        self.assertTrue(self.aluno.expulso)
+        self.assertEqual(self.aluno.motivo_expulsao, 'Denúncia de Carla: Primeira')
+        self.assertEqual(set(Denuncia.objects.values_list('situacao', flat=True)), {'expulso'})
+        self.assertFalse(Solicitacao.objects.exists())  #o atendimento futuro dela foi cancelado
+
+    def test_motivo_longo_e_cortado_na_expulsao(self, _):
+        d = self.criar('x' * 400)
+        self.entrar_admin()
+        self.client.post(reverse('denuncia_expulsar', args=[d.id]))
+        self.aluno.refresh_from_db()
+        self.assertEqual(len(self.aluno.motivo_expulsao), 200)
+        self.assertTrue(self.aluno.motivo_expulsao.endswith('...'))
+
+    def test_arquivar_nao_pune(self, _):
+        d = self.criar()
+        self.entrar_admin()
+        r = self.client.post(reverse('denuncia_arquivar', args=[d.id]), follow=True)
+        self.assertContains(r, 'arquivada, sem punição')
+        self.aluno.refresh_from_db()
+        self.assertFalse(self.aluno.expulso)
+        d.refresh_from_db()
+        self.assertEqual(d.situacao, 'arquivada')
+        self.assertIsNotNone(d.resolvida_em)
+
+    def test_denuncia_resolvida_nao_pode_ser_decidida_de_novo(self, _):
+        d = self.criar()
+        self.entrar_admin()
+        self.client.post(reverse('denuncia_arquivar', args=[d.id]))
+        self.assertEqual(self.client.post(reverse('denuncia_expulsar', args=[d.id])).status_code, 404)
+
+    def test_ficha_do_aluno_mostra_as_denuncias(self, _):
+        self.criar()
+        self.entrar_admin()
+        r = self.client.get(self.url('usuario', 'aluno', self.aluno))
+        self.assertContains(r, 'Denúncias recebidas')
+        self.assertContains(r, 'Desrespeitou o monitor')
+
+    def test_decidir_exige_administrador(self, _):
+        d = self.criar()
+        r = self.client.post(reverse('denuncia_expulsar', args=[d.id]))
+        self.assertIn(reverse('admin:login'), r['Location'])
+        self.aluno.refresh_from_db()
+        self.assertFalse(self.aluno.expulso)

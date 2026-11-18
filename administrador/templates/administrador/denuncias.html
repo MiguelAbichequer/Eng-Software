@@ -1,0 +1,71 @@
+{% extends 'administrador/base.html' %}
+
+{% block titulo %}Denúncias{% endblock %}
+{% block menu_denuncias %}aria-current="page"{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Denúncias</h1>
+    <p class="subtitulo">Feitas pelos monitores sobre alunos. Você decide se o aluno é expulso ou se a denúncia é arquivada.</p>
+
+    <section aria-labelledby="titulo-pendentes">
+        <h2 id="titulo-pendentes">Esperando decisão</h2>
+        {% if pendentes %}
+            <ul class="pedidos">
+                {% for d in pendentes %}
+                    <li class="pedido">
+                        <div class="pedido-dados">
+                            <strong><a href="{% url 'usuario' 'aluno' d.aluno.id %}">{{ d.aluno.nome }}</a> &middot; matrícula {{ d.aluno.matricula }}{% if d.aluno.expulso %} <span class="selo selo-expulso">Já expulso</span>{% endif %}</strong>
+                            <span class="denuncia-motivo">&ldquo;{{ d.motivo }}&rdquo;</span>
+                            <span class="nota">Por {{ d.monitor.nome|default:"monitor apagado" }}, em {{ d.criada_em|date:"d/m/Y" }} às {{ d.criada_em|time:"H:i" }}</span>
+                        </div>
+                        <div class="pedido-acoes">
+                            <details class="confirmar">
+                                <summary class="botao botao-perigo">{% if d.aluno.expulso %}Encerrar{% else %}Expulsar aluno{% endif %}</summary>
+                                <form method="post" action="{% url 'denuncia_expulsar' d.id %}">
+                                    {% csrf_token %}
+                                    {% if d.aluno.expulso %}
+                                        <p>O aluno já está expulso. A denúncia será encerrada.</p>
+                                    {% else %}
+                                        <p>{{ d.aluno.nome }} deixa de entrar no sistema e os atendimentos futuros dele são cancelados. Dá para readmitir depois, na ficha do aluno.</p>
+                                    {% endif %}
+                                    <button type="submit" class="botao botao-perigo">Confirmar</button>
+                                </form>
+                            </details>
+                            <form method="post" action="{% url 'denuncia_arquivar' d.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="botao botao-secundario">Arquivar</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="vazio"><p>Nenhuma denúncia esperando decisão.</p></div>
+        {% endif %}
+    </section>
+
+    {% if resolvidas %}
+        <section aria-labelledby="titulo-resolvidas">
+            <h2 id="titulo-resolvidas">Resolvidas</h2>
+            <div class="rolagem">
+                <table class="tabela">
+                    <thead>
+                        <tr><th scope="col">Aluno</th><th scope="col">Monitor</th><th scope="col">Motivo</th><th scope="col">Decisão</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for d in resolvidas %}
+                            <tr>
+                                <td><a href="{% url 'usuario' 'aluno' d.aluno.id %}">{{ d.aluno.nome }}</a></td>
+                                <td>{{ d.monitor.nome|default:"monitor apagado" }}</td>
+                                <td>{{ d.motivo|truncatechars:80 }}</td>
+                                <td class="sem-quebra">{{ d.get_situacao_display }}, {{ d.resolvida_em|date:"d/m" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
+{% endblock %}

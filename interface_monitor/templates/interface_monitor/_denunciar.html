@@ -1,0 +1,18 @@
+{# botão "Denunciar aluno" de um atendimento: abre um campo para o motivo, que vai para o administrador #}
+<details class="cancelar denunciar">
+    <summary>
+        <span class="botao botao-secundario">
+            <span class="rotulo-abrir">Denunciar aluno</span>
+            <span class="rotulo-fechar">Voltar</span>
+        </span>
+    </summary>
+    <form method="post" action="{% url 'monitor_denunciar' s.aluno.id %}">
+        {% csrf_token %}
+        <label class="campo">
+            <span>O que aconteceu com {{ s.aluno.nome }}?</span>
+            <textarea name="motivo" rows="3" maxlength="500" required placeholder="Ex.: faltou sem avisar nas últimas três reservas"></textarea>
+        </label>
+        <p>A denúncia vai para o administrador, que decide se o aluno é expulso.</p>
+        <button type="submit" class="botao botao-perigo">Enviar denúncia</button>
+    </form>
+</details>

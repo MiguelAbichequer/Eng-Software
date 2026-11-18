@@ -11,6 +11,7 @@ from interface_aluno.disponibilidade import agora_local
 from monitor.models import Monitor
 
 from . import relatorio, usuarios
+from .models import Denuncia
 
 
 def _filtros(request):
@@ -125,6 +126,8 @@ def usuario_view(request, tipo, usuario_id):
         'a_cancelar': 0 if usuario.expulso else len(usuarios.canceladas_ao_expulsar(usuario, agora)),
         'limite_historico': usuarios.LIMITE_HISTORICO,
     }
+    if tipo == 'aluno':
+        contexto['denuncias'] = list(usuario.denuncias.select_related('monitor'))
     if tipo == 'monitor':
         contexto['horarios'] = list(usuario.horarios.all())
         contexto['disciplinas'] = list(usuario.disciplinas.order_by('nome'))
@@ -218,3 +221,66 @@ def recusar_monitor_view(request, monitor_id):
     monitor.delete()
     messages.success(request, f'O cadastro de {nome} foi recusado e apagado.')
     return redirect('monitores_pendentes')
+
+
+# ---------------------------------------------------------------------------
+# Denúncias de alunos feitas pelos monitores
+# ---------------------------------------------------------------------------
+
+#quantas denúncias já resolvidas aparecem embaixo das pendentes
+LIMITE_DENUNCIAS_RESOLVIDAS = 20
+
+
+@staff_member_required
+def denuncias_view(request):
+    """As denúncias pendentes (mais antigas primeiro) e as últimas já resolvidas."""
+    todas = Denuncia.objects.select_related('aluno', 'monitor')
+    return render(request, 'administrador/denuncias.html', {
+        'pendentes': todas.filter(situacao=Denuncia.PENDENTE).order_by('criada_em'),
+        'resolvidas': todas.exclude(situacao=Denuncia.PENDENTE).order_by('-resolvida_em')[:LIMITE_DENUNCIAS_RESOLVIDAS],
+    })
+
+
+def _denuncia_pendente(denuncia_id):
+    return get_object_or_404(Denuncia.objects.select_related('aluno', 'monitor'), pk=denuncia_id, situacao=Denuncia.PENDENTE)
+
+
+@staff_member_required
+@require_POST
+def expulsar_por_denuncia_view(request, denuncia_id):
+    """
+    Expulsa o aluno denunciado, com a mesma expulsão da ficha do usuário (reversível,
+    cancela os atendimentos futuros). As outras denúncias pendentes dele são resolvidas junto.
+    """
+    denuncia = _denuncia_pendente(denuncia_id)
+    aluno = denuncia.aluno
+    agora = agora_local()
+
+    if not aluno.expulso:
+        quem = denuncia.monitor.nome if denuncia.monitor else 'monitor'
+        #o motivo da expulsão tem até 200 caracteres; a denúncia completa continua guardada
+        motivo = f'Denúncia de {quem}: {denuncia.motivo}'
+        if len(motivo) > 200:
+            motivo = motivo[:197] + '...'
+        canceladas = usuarios.expulsar(aluno, motivo, agora)
+        texto = f'{aluno.nome} foi expulso.'
+        if canceladas:
+            texto += f' {canceladas} atendimento{"s" if canceladas > 1 else ""} futuro{"s" if canceladas > 1 else ""} cancelado{"s" if canceladas > 1 else ""}.'
+    else:
+        texto = f'{aluno.nome} já estava expulso; a denúncia foi encerrada.'
+
+    Denuncia.objects.filter(aluno=aluno, situacao=Denuncia.PENDENTE).update(situacao=Denuncia.EXPULSO, resolvida_em=agora)
+    messages.success(request, texto)
+    return redirect('denuncias')
+
+
+@staff_member_required
+@require_POST
+def arquivar_denuncia_view(request, denuncia_id):
+    """Encerra a denúncia sem punir o aluno."""
+    denuncia = _denuncia_pendente(denuncia_id)
+    denuncia.situacao = Denuncia.ARQUIVADA
+    denuncia.resolvida_em = agora_local()
+    denuncia.save(update_fields=['situacao', 'resolvida_em'])
+    messages.success(request, f'Denúncia sobre {denuncia.aluno.nome} arquivada, sem punição.')
+    return redirect('denuncias')

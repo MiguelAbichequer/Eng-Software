@@ -157,3 +157,16 @@ input[type="time"] {
     .nova-disciplina .botao { justify-self: start; }
     .status-botoes { grid-template-columns: 1fr; }
 }
+
+/* ---------- denunciar aluno ---------- */
+
+.denunciar { margin-top: .5rem; }
+.denunciar form { max-width: 22rem; }
+.denunciar textarea {
+    width: 100%;
+    padding: .5rem .6rem;
+    border: 1px solid var(--tinta-suave);
+    border-radius: 6px;
+    font: inherit;
+    resize: vertical;
+}

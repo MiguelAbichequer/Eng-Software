@@ -4,10 +4,13 @@ from datetime import time
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.formats import date_format
 from django.views.decorators.http import require_POST
 
+from administrador.models import Denuncia
+from alunos.models import Aluno
 from interface_aluno.disponibilidade import agora_local, ja_comecou, ja_terminou, pode_cancelar
 from monitor.models import Disciplina, DiasSemana, Horario, Monitor, Solicitacao
 
@@ -109,6 +112,33 @@ def remover_atendimento(request, solicitacao_id):
     )
     solicitacao.delete()
     messages.success(request, f'Atendimento removido: {resumo}.')
+    return redirect('monitor_painel')
+
+
+#tamanho máximo do texto da denúncia (o mesmo do campo no modelo)
+MAX_MOTIVO_DENUNCIA = 500
+
+
+@monitor_logado
+@require_POST
+def denunciar_aluno(request, aluno_id):
+    """O monitor denuncia um aluno ao administrador, explicando o motivo."""
+    #só dá para denunciar um aluno que já solicitou atendimento com este monitor;
+    #qualquer outro id vira 404 (ninguém denuncia um aluno que nunca atendeu)
+    aluno = Aluno.objects.filter(pk=aluno_id, solicitacoes__horario__monitor=request.monitor).first()
+    if aluno is None:
+        raise Http404('Aluno não encontrado entre os seus atendimentos.')
+
+    motivo = ' '.join(request.POST.get('motivo', '').split())  #tira espaços e quebras sobrando
+    if not motivo:
+        messages.error(request, 'Explique o motivo da denúncia.')
+        return redirect('monitor_painel')
+    if len(motivo) > MAX_MOTIVO_DENUNCIA:
+        messages.error(request, f'O motivo pode ter no máximo {MAX_MOTIVO_DENUNCIA} caracteres.')
+        return redirect('monitor_painel')
+
+    Denuncia.objects.create(aluno=aluno, monitor=request.monitor, motivo=motivo)
+    messages.success(request, f'Denúncia sobre {aluno.nome} enviada ao administrador.')
     return redirect('monitor_painel')
 
 
