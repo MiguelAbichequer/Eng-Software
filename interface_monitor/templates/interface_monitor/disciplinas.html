@@ -5,7 +5,7 @@
 {% block conteudo %}
 
     <h1>Disciplinas</h1>
-    <p class="subtitulo">As disciplinas em que você atende. Os alunos usam isso para encontrar você.</p>
+    <p class="subtitulo">As disciplinas que você atende.</p>
 
     <section aria-labelledby="titulo-minhas">
         <h2 id="titulo-minhas" class="titulo-primeiro">Minhas disciplinas</h2>
@@ -38,7 +38,7 @@
 
     <section aria-labelledby="titulo-nova">
         <h2 id="titulo-nova">Não encontrou a sua disciplina?</h2>
-        <p class="nota">Cadastre aqui. Ela já fica associada a você e passa a aparecer para os outros monitores e para os alunos.</p>
+        <p class="nota"><span class="dica"><button type="button" class="dica-botao" aria-label="Mais informações" aria-describedby="dica-disciplina"><svg class="dica-icone" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.25" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7.9" r="1.25" fill="currentColor"/><path d="M12 11.1v5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><span class="dica-texto" id="dica-disciplina" role="tooltip">Cadastre aqui. Ela já fica associada a você e passa a aparecer para os outros monitores e para os alunos.</span></span></p>
 
         <form method="post" action="{% url 'monitor_disciplina_nova' %}" class="nova-disciplina">
             {% csrf_token %}

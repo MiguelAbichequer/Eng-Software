@@ -1,0 +1,66 @@
+/* Dicas: o texto de apoio aparece ao passar o mouse, ao focar com o teclado
+   ou ao tocar no ícone (o JavaScript em js/comum/dica.js cuida do toque). */
+
+.dica {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.dica-botao {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--azul, #2f6f87);
+    cursor: help;
+    transition: background .15s, color .15s;
+}
+
+.dica-botao:hover,
+.dica.aberta .dica-botao {
+    background: #e3eef3;
+    color: var(--azul-escuro, #1f5266);
+}
+
+.dica-botao:focus-visible {
+    outline: 3px solid var(--azul, #2f6f87);
+    outline-offset: 2px;
+}
+
+.dica-icone {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.dica-texto {
+    display: none;
+    position: absolute;
+    top: calc(100% + .45rem);
+    left: 0;
+    z-index: 50;
+    width: min(20rem, 80vw);
+    padding: .65rem .8rem;
+    border-radius: 8px;
+    background: var(--tinta, #14303b);
+    color: #fff;
+    font-size: .875rem;
+    font-weight: 400;
+    line-height: 1.45;
+    text-align: left;
+    box-shadow: 0 6px 18px rgba(20, 48, 59, .25);
+}
+
+.dica:hover .dica-texto,
+.dica.aberta .dica-texto,
+.dica:has(.dica-botao:focus-visible) .dica-texto {
+    display: block;
+}
