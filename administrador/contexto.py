@@ -6,6 +6,7 @@ o dicionário que ela devolve fica disponível em todos os templates. Está regi
 config/settings.py (TEMPLATES > OPTIONS > context_processors).
 """
 
+from alunos.models import Aluno
 from monitor.models import Monitor
 
 from .models import Denuncia
@@ -17,6 +18,7 @@ def pendencias(request):
     if not (usuario and usuario.is_authenticated and usuario.is_staff):
         return {}
     return {
+        'alunos_pendentes_total': Aluno.objects.filter(aprovado=False, expulso_em__isnull=True).count(),
         'monitores_pendentes_total': Monitor.objects.filter(aprovado=False, expulso_em__isnull=True).count(),
         'denuncias_pendentes_total': Denuncia.objects.filter(situacao=Denuncia.PENDENTE).count(),
     }

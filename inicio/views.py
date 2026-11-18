@@ -5,7 +5,7 @@ from alunos.models import Aluno
 from monitor.models import Monitor
 
 CONTA_SUSPENSA = 'Esta conta foi suspensa pela administração. Procure a coordenação da monitoria.'
-AGUARDANDO_APROVACAO = 'Seu cadastro de monitor ainda está aguardando a aprovação de um administrador.'
+AGUARDANDO_APROVACAO = 'Seu cadastro ainda está aguardando a aprovação de um administrador.'
 
 
 def _entrar(request, chave, usuario, destino):
@@ -36,8 +36,9 @@ def home(request):
                 #(só avisamos depois de conferir a senha, para não revelar a situação a qualquer um)
                 if usuario.expulso:
                     return render(request, 'inicio/home.html', {**contexto, 'erro': CONTA_SUSPENSA})
-                #monitor que se cadastrou e ainda não foi aprovado pelo administrador
-                if tipo == 'monitor' and not usuario.aprovado:
+                #cadastro feito pela página inicial (aluno ou monitor) que ainda não foi aprovado
+                #pelo administrador: só entra depois da aprovação
+                if not usuario.aprovado:
                     return render(request, 'inicio/home.html', {**contexto, 'erro': AGUARDANDO_APROVACAO})
                 if tipo == 'monitor':
                     return _entrar(request, 'monitor_id', usuario, 'monitor_painel')

@@ -75,3 +75,6 @@ input[type="password"] {
 .cadastro-botoes .botao { text-align: center; }
 
 .cadastro-rodape { margin-top: 1.25rem; text-align: center; color: var(--tinta-suave); }
+
+/* ajuda abaixo do campo de documento no cadastro de aluno */
+.campo .nota { margin: .35rem 0 0; font-size: .85rem; color: var(--tinta-suave); }

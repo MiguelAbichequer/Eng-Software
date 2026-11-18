@@ -1,0 +1,51 @@
+{% extends 'administrador/base.html' %}
+
+{% block titulo %}Solicitações de aluno{% endblock %}
+{% block menu_solicitacoes_aluno %}aria-current="page"{% endblock %}
+
+{% block conteudo %}
+
+    <h1>Solicitações de aluno</h1>
+    <p class="subtitulo">Cadastros feitos pela página inicial. Confira o documento de confirmação enviado por cada aluno. Até a aprovação, essas pessoas não entram no sistema.</p>
+
+    {% if pendentes %}
+        <ul class="pedidos">
+            {% for a in pendentes %}
+                <li class="pedido">
+                    <div class="pedido-dados">
+                        <strong>{{ a.nome }}</strong>
+                        <span>Matrícula {{ a.matricula }}</span>
+                        <span class="nota">
+                            {% if a.cadastrado_em %}Cadastro em {{ a.cadastrado_em|date:"d/m/Y" }} às {{ a.cadastrado_em|time:"H:i" }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="pedido-acoes">
+                        {% if a.documento_confirmacao %}
+                            <a class="botao botao-secundario" href="{% url 'aluno_documento' a.id %}" target="_blank" rel="noopener">Ver documento</a>
+                        {% else %}
+                            <span class="nota">Sem documento anexado</span>
+                        {% endif %}
+                        <form method="post" action="{% url 'aluno_aprovar' a.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="botao">Aprovar</button>
+                        </form>
+                        {# <details> pede um segundo clique antes de apagar #}
+                        <details class="confirmar">
+                            <summary class="botao botao-secundario">Recusar</summary>
+                            <form method="post" action="{% url 'aluno_recusar' a.id %}">
+                                {% csrf_token %}
+                                <p>O cadastro e o documento enviado serão apagados. A pessoa pode se cadastrar de novo depois.</p>
+                                <button type="submit" class="botao botao-perigo">Confirmar recusa</button>
+                            </form>
+                        </details>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="vazio">
+            <p>Nenhuma solicitação de aluno pendente.</p>
+        </div>
+    {% endif %}
+
+{% endblock %}

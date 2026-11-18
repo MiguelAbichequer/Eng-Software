@@ -21,6 +21,16 @@ class Aluno(models.Model): #representa uma tabela no banco de dados
     senha = models.CharField(max_length=128, blank=True)
     #email
 
+    #cadastro feito pela página inicial (inicio/cadastro.py) fica com aprovado=False até o
+    #administrador conferir o documento de confirmação enviado pelo aluno (administrador/views.py).
+    #Enquanto não aprovado, a pessoa não consegue entrar. Quem o administrador cadastra
+    #pelo /admin/ já nasce aprovado (default=True).
+    aprovado = models.BooleanField(default=True)
+    cadastrado_em = models.DateTimeField(auto_now_add=True, null=True)
+    #documento que comprova o vínculo do aluno (ex.: comprovante de matrícula).
+    #Fica guardado em MEDIA_ROOT e só o administrador consegue abrir (administrador/views.py).
+    documento_confirmacao = models.FileField(upload_to='documentos_alunos/%Y/%m/', blank=True)
+
     #expulsão feita pelo administrador. Não apaga a conta (o histórico continua no relatório):
     #só impede o login e esconde a pessoa do sistema. Vazio = conta ativa.
     expulso_em = models.DateTimeField(null=True, blank=True)

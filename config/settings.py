@@ -132,6 +132,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+#arquivos enviados pelos usuários (documentos de confirmação do cadastro de aluno).
+#Não são servidos por URL pública: só o administrador abre, por uma view com login (administrador/views.py).
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

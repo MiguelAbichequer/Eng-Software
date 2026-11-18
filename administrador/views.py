@@ -2,11 +2,12 @@ import csv
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from alunos.models import Aluno
 from interface_aluno.disponibilidade import agora_local
 from monitor.models import Monitor
 
@@ -221,6 +222,69 @@ def recusar_monitor_view(request, monitor_id):
     monitor.delete()
     messages.success(request, f'O cadastro de {nome} foi recusado e apagado.')
     return redirect('monitores_pendentes')
+
+
+# ---------------------------------------------------------------------------
+# Aprovação de alunos (cadastro com documento de confirmação)
+# ---------------------------------------------------------------------------
+
+def _aluno_pendente(aluno_id):
+    #só alunos ainda não aprovados (e não expulsos) entram nesta fila
+    return get_object_or_404(Aluno, pk=aluno_id, aprovado=False, expulso_em__isnull=True)
+
+
+@staff_member_required
+def alunos_pendentes_view(request):
+    """Fila de cadastros de aluno esperando a conferência do documento, dos mais antigos para os mais novos."""
+    pendentes = (
+        Aluno.objects.filter(aprovado=False, expulso_em__isnull=True)
+        .order_by('cadastrado_em', 'nome')
+    )
+    return render(request, 'administrador/alunos_pendentes.html', {'pendentes': pendentes})
+
+
+@staff_member_required
+def documento_aluno_view(request, aluno_id):
+    """
+    Abre o documento de confirmação enviado pelo aluno, dentro do próprio sistema.
+    O arquivo não tem URL pública: só quem está logado como administrador chega até aqui.
+    """
+    aluno = get_object_or_404(Aluno, pk=aluno_id)
+    if not aluno.documento_confirmacao:
+        raise Http404('Este cadastro não tem documento.')
+    try:
+        arquivo = aluno.documento_confirmacao.open('rb')
+    except FileNotFoundError:
+        raise Http404('O arquivo do documento não foi encontrado.')
+    #inline: abre no navegador em vez de baixar; o nome do arquivo vem do cadastro
+    return FileResponse(arquivo, as_attachment=False, filename=aluno.documento_confirmacao.name.rsplit('/', 1)[-1])
+
+
+@staff_member_required
+@require_POST
+def aprovar_aluno_view(request, aluno_id):
+    """Aprova o cadastro depois de conferir o documento: o aluno passa a conseguir entrar."""
+    aluno = _aluno_pendente(aluno_id)
+    aluno.aprovado = True
+    aluno.save(update_fields=['aprovado'])
+    messages.success(request, f'{aluno.nome} foi aprovado e já pode entrar no sistema.')
+    return redirect('alunos_pendentes')
+
+
+@staff_member_required
+@require_POST
+def recusar_aluno_view(request, aluno_id):
+    """
+    Recusa o cadastro: apaga a conta e o documento enviado. Como o aluno nunca foi aprovado,
+    ele não tem solicitações nem histórico; e a matrícula fica livre para um novo cadastro.
+    """
+    aluno = _aluno_pendente(aluno_id)
+    nome = aluno.nome
+    if aluno.documento_confirmacao:
+        aluno.documento_confirmacao.delete(save=False)
+    aluno.delete()
+    messages.success(request, f'O cadastro de {nome} foi recusado e apagado.')
+    return redirect('alunos_pendentes')
 
 
 # ---------------------------------------------------------------------------

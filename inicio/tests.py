@@ -4,8 +4,12 @@ Testes da página inicial (login) e dos cadastros de aluno e monitor.
 Para rodar:  python manage.py test inicio
 """
 
+import shutil
+import tempfile
+
 from django.contrib.auth.hashers import check_password, make_password
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from alunos.models import Aluno
@@ -16,8 +20,22 @@ class CadastroTests(TestCase):
     #os dois cadastros usam a mesma regra (inicio/cadastro.py): cada teste roda para os dois
     CASOS = [('cadastro_aluno', Aluno, 'aluno'), ('cadastro_monitor', Monitor, 'monitor')]
 
+    def setUp(self):
+        #os documentos de confirmação vão para uma pasta temporária, não para o projeto
+        pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, pasta, True)
+        override = override_settings(MEDIA_ROOT=pasta)
+        override.enable()
+        self.addCleanup(override.disable)
+
+    def documento_valido(self, nome='comprovante.pdf', conteudo=b'%PDF-1.4 teste'):
+        return SimpleUploadedFile(nome, conteudo, content_type='application/pdf')
+
     def enviar(self, rota, **dados):
         campos = {'matricula': '2024001', 'nome': 'Ana Ribeiro', 'senha': 'abc123'}
+        #o aluno envia um documento de confirmação; o monitor não
+        if rota == 'cadastro_aluno':
+            campos['documento'] = self.documento_valido()
         campos.update(dados)
         return self.client.post(reverse(rota), campos)
 
@@ -38,11 +56,11 @@ class CadastroTests(TestCase):
                 self.assertEqual(novo.nome, 'Ana Ribeiro')
                 self.assertTrue(check_password('abc123', novo.senha))
                 self.assertNotEqual(novo.senha, 'abc123')
+                #aluno e monitor só entram depois da aprovação do administrador
+                self.assertFalse(novo.aprovado)
 
                 pagina = self.client.get(r['Location'])
-                #o monitor ainda precisa da aprovação do administrador
-                confirmacao = 'Cadastro enviado, Ana!' if papel == 'monitor' else 'Cadastro feito, Ana!'
-                self.assertContains(pagina, confirmacao)
+                self.assertContains(pagina, 'Cadastro enviado, Ana!')
                 self.assertContains(pagina, f'value="{papel}" checked')
 
     def test_matricula_repetida_mostra_erro_em_vez_de_quebrar(self):
@@ -88,6 +106,68 @@ class CadastroTests(TestCase):
         self.enviar('cadastro_aluno', matricula=' 2024001 ', nome='  Ana   Ribeiro ')
         aluno = Aluno.objects.get()
         self.assertEqual((aluno.matricula, aluno.nome), ('2024001', 'Ana Ribeiro'))
+
+    def test_aluno_sem_documento_e_recusado(self):
+        r = self.client.post(reverse('cadastro_aluno'), {'matricula': '2024001', 'nome': 'Ana', 'senha': 'abc123'})
+        self.assertContains(r, 'Envie o documento de confirmação')
+        self.assertFalse(Aluno.objects.exists())
+
+    def test_documento_com_formato_ou_conteudo_errado_e_recusado(self):
+        casos = {
+            'extensão não aceita': self.documento_valido('lista.docx', b'PK\x03\x04'),
+            'nome .pdf com conteúdo de texto': self.documento_valido('foto.pdf', b'isto nao e um pdf'),
+            'arquivo grande': self.documento_valido('grande.pdf', b'%PDF' + b'0' * (5 * 1024 * 1024)),
+        }
+        for nome_caso, arquivo in casos.items():
+            with self.subTest(nome_caso):
+                r = self.client.post(reverse('cadastro_aluno'), {
+                    'matricula': '2024001', 'nome': 'Ana', 'senha': 'abc123', 'documento': arquivo,
+                })
+                self.assertContains(r, 'aviso-error')
+                self.assertFalse(Aluno.objects.exists())
+
+    def test_documento_valido_fica_guardado_no_aluno(self):
+        self.enviar('cadastro_aluno', documento=self.documento_valido('rg.png', b'\x89PNG\r\n\x1a\n teste'))
+        aluno = Aluno.objects.get(matricula='2024001')
+        self.assertTrue(aluno.documento_confirmacao.name.endswith('rg.png'))
+        self.assertTrue(aluno.documento_confirmacao.storage.exists(aluno.documento_confirmacao.name))
+        self.assertIsNotNone(aluno.cadastrado_em)
+
+    def test_formulario_de_aluno_pede_documento_e_o_de_monitor_nao(self):
+        r = self.client.get(reverse('cadastro_aluno'))
+        self.assertContains(r, 'type="file"')
+        self.assertContains(r, 'enctype="multipart/form-data"')
+        r = self.client.get(reverse('cadastro_monitor'))
+        self.assertNotContains(r, 'type="file"')
+
+
+class AlunoAguardandoAprovacaoTests(TestCase):
+    """Aluno que se cadastrou e ainda não foi aprovado pelo administrador não consegue entrar."""
+
+    def setUp(self):
+        pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, pasta, True)
+        override = override_settings(MEDIA_ROOT=pasta)
+        override.enable()
+        self.addCleanup(override.disable)
+
+    def test_login_bloqueado_ate_aprovacao_e_liberado_depois(self):
+        aluno = Aluno.objects.create(matricula='a1', nome='Ana', senha=make_password('segredo'), aprovado=False)
+
+        r = self.client.post(reverse('home'), {'tipo': 'aluno', 'username': 'a1', 'password': 'segredo'})
+        self.assertContains(r, 'Seu cadastro ainda está aguardando a aprovação')
+        self.assertNotIn('aluno_id', self.client.session)
+
+        aluno.aprovado = True
+        aluno.save()
+        r = self.client.post(reverse('home'), {'tipo': 'aluno', 'username': 'a1', 'password': 'segredo'})
+        self.assertRedirects(r, reverse('painel'), fetch_redirect_response=False)
+        self.assertEqual(self.client.session.get('aluno_id'), aluno.id)
+
+    def test_senha_errada_continua_com_a_mensagem_de_senha(self):
+        Aluno.objects.create(matricula='a1', nome='Ana', senha=make_password('segredo'), aprovado=False)
+        r = self.client.post(reverse('home'), {'tipo': 'aluno', 'username': 'a1', 'password': 'errada'})
+        self.assertContains(r, 'Senha incorreta.')
 
 
 class LoginTests(TestCase):

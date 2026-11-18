@@ -1,6 +1,7 @@
 {% extends 'inicio/base_publica.html' %}
 
 {# Mesmo formulário para aluno e monitor: a view (inicio/cadastro.py) manda papel = 'aluno' ou 'monitor'. #}
+{# Só o aluno envia documento de confirmação (exige_documento). #}
 
 {% block titulo %}Cadastro de {{ papel }}{% endblock %}
 
@@ -13,7 +14,7 @@
         <span class="dica"><button type="button" class="dica-botao" aria-label="Mais informações" aria-describedby="dica-cadastro"><svg class="dica-icone" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.25" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7.9" r="1.25" fill="currentColor"/><path d="M12 11.1v5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><span class="dica-texto" id="dica-cadastro" role="tooltip">{% if papel == 'monitor' %}Depois de entrar, você cadastra suas disciplinas e seus horários de atendimento no seu painel.{% else %}Com o cadastro, você reserva horários com os monitores e acompanha suas solicitações.{% endif %}</span></span>
     </p>
 
-    <form method="post" class="cartao">
+    <form method="post" class="cartao" enctype="multipart/form-data">
         {% csrf_token %}
 
         {% if erro %}
@@ -34,6 +35,14 @@
             <label for="senha">Senha</label>
             <input type="password" id="senha" name="senha" autocomplete="new-password" required>
         </div>
+
+        {% if exige_documento %}
+            <div class="campo">
+                <label for="documento">Documento de confirmação</label>
+                <input type="file" id="documento" name="documento" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required aria-describedby="documento-ajuda">
+                <p class="nota" id="documento-ajuda">Envie um comprovante de vínculo com a instituição (PDF, JPG ou PNG, até 5 MB). O administrador confere o documento antes de liberar o seu acesso.</p>
+            </div>
+        {% endif %}
 
         <button type="submit" class="botao botao-largo">Cadastrar</button>
     </form>

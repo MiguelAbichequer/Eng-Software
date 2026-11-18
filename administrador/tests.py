@@ -5,12 +5,16 @@ O "agora" é fixado (quarta-feira, 04/11/2026, 10:30) para o resultado não depe
 Para rodar:  python manage.py test administrador
 """
 
+import os
+import shutil
+import tempfile
 from datetime import datetime, time, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -516,3 +520,71 @@ class DenunciaTests(BaseTeste):
         self.assertIn(reverse('admin:login'), r['Location'])
         self.aluno.refresh_from_db()
         self.assertFalse(self.aluno.expulso)
+
+
+class AprovacaoAlunoTests(TestCase):
+    """Fila de cadastros de aluno: o administrador confere o documento e aprova ou recusa."""
+
+    def setUp(self):
+        #os documentos vão para uma pasta temporária, não para o projeto
+        pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, pasta, True)
+        override = override_settings(MEDIA_ROOT=pasta)
+        override.enable()
+        self.addCleanup(override.disable)
+
+        self.admin = User.objects.create_user('admin', password='x', is_staff=True)
+        self.comprovante = SimpleUploadedFile('comprovante.pdf', b'%PDF-1.4 conteudo', content_type='application/pdf')
+        self.pendente = Aluno.objects.create(
+            matricula='p1', nome='Paula', senha=HASH, aprovado=False,
+            documento_confirmacao=self.comprovante,
+        )
+
+    def test_fila_mostra_o_pendente_e_o_link_do_documento(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse('alunos_pendentes'))
+        self.assertContains(r, 'Paula')
+        self.assertContains(r, reverse('aluno_documento', args=[self.pendente.id]))
+
+    def test_documento_so_abre_para_o_administrador(self):
+        url = reverse('aluno_documento', args=[self.pendente.id])
+        r = self.client.get(url)
+        self.assertNotEqual(r.status_code, 200)  #visitante não vê o documento
+
+        self.client.force_login(self.admin)
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(b''.join(r.streaming_content), b'%PDF-1.4 conteudo')
+        self.assertIn('inline', r['Content-Disposition'])
+
+    def test_aprovar_libera_o_aluno(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse('aluno_aprovar', args=[self.pendente.id]))
+        self.assertRedirects(r, reverse('alunos_pendentes'), fetch_redirect_response=False)
+        self.pendente.refresh_from_db()
+        self.assertTrue(self.pendente.aprovado)
+        #o documento fica guardado para conferência posterior
+        self.assertTrue(self.pendente.documento_confirmacao)
+
+    def test_recusar_apaga_a_conta_e_o_documento(self):
+        caminho = self.pendente.documento_confirmacao.path
+        self.client.force_login(self.admin)
+        self.client.post(reverse('aluno_recusar', args=[self.pendente.id]))
+        self.assertFalse(Aluno.objects.filter(pk=self.pendente.pk).exists())
+        self.assertFalse(os.path.exists(caminho))
+
+    def test_aprovar_ou_recusar_so_vale_para_pendentes_e_por_post(self):
+        aprovado = Aluno.objects.create(matricula='ok', nome='Ok', senha=HASH)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post(reverse('aluno_aprovar', args=[aprovado.id])).status_code, 404)
+        self.assertEqual(self.client.post(reverse('aluno_recusar', args=[aprovado.id])).status_code, 404)
+        self.assertTrue(Aluno.objects.filter(pk=aprovado.pk).exists())
+
+        self.assertEqual(self.client.get(reverse('aluno_aprovar', args=[self.pendente.id])).status_code, 405)
+        self.pendente.refresh_from_db()
+        self.assertFalse(self.pendente.aprovado)
+
+    def test_contador_do_menu_conta_os_pendentes(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse('alunos_pendentes'))
+        self.assertEqual(r.context['alunos_pendentes_total'], 1)
