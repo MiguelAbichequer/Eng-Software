@@ -3,7 +3,7 @@
     <div class="solicitacao-quando">
         <strong>{{ s.hora_inicio|time:"H:i" }} às {{ s.hora_fim|time:"H:i" }}</strong>
         {% if s.em_andamento %}
-            {% include 'interface_aluno/_estado.html' with estado='em_atendimento' %}
+            {% include 'alunos/_estado.html' with estado='em_atendimento' %}
         {% endif %}
     </div>
 
@@ -36,7 +36,7 @@
             {% else %}
                 <span class="solicitacao-meta">Já começou</span>
             {% endif %}
-            {% include 'interface_monitor/_denunciar.html' %}
+            {% include 'monitor/_denunciar.html' %}
         </div>
     {% endif %}
 </li>

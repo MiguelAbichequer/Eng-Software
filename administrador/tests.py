@@ -35,8 +35,8 @@ HASH = make_password('segredo')
 class BaseTeste(TestCase):
     def setUp(self):
         #o relógio é congelado em todos os lugares que decidem o que é "futuro"
-        for alvo in ('administrador.views.agora_local', 'interface_aluno.views.agora_local',
-                     'interface_monitor.views.agora_local'):
+        for alvo in ('administrador.views.agora_local', 'alunos.views.agora_local',
+                     'monitor.views.agora_local'):
             patcher = patch(alvo, return_value=AGORA)
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -420,7 +420,7 @@ class AprovacaoDeMonitorTests(BaseTeste):
         self.assertContains(ficha, reverse('monitor_aprovar', args=[novo.id]))
 
 
-@patch('interface_monitor.views.agora_local', return_value=AGORA)
+@patch('monitor.views.agora_local', return_value=AGORA)
 class DenunciaTests(BaseTeste):
     """O monitor denuncia um aluno; o administrador expulsa ou arquiva."""
 

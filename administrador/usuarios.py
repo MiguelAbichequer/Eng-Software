@@ -19,7 +19,7 @@ from django.db.models import Count, Q
 from django.http import Http404
 
 from alunos.models import Aluno
-from interface_aluno.disponibilidade import ja_terminou, pode_cancelar
+from alunos.disponibilidade import ja_terminou, pode_cancelar
 from monitor.models import Monitor, Solicitacao
 
 #tipos de usuário que o administrador consulta, como aparecem na URL

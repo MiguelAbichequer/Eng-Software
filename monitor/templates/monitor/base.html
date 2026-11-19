@@ -5,8 +5,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block titulo %}Monitores{% endblock %} - Sistema de Monitoria</title>
-    <link rel="stylesheet" href="{% static 'css/interface_aluno/painel.css' %}">
+    <title>{% block titulo %}Atendimentos{% endblock %} - Sistema de Monitoria</title>
+    {# o visual é o mesmo da tela do aluno: reaproveita o CSS dela e acrescenta só o que é do monitor #}
+    <link rel="stylesheet" href="{% static 'css/aluno/painel.css' %}">
+    <link rel="stylesheet" href="{% static 'css/monitor/monitor.css' %}">
     <link rel="stylesheet" href="{% static 'css/comum/dica.css' %}">
     <script src="{% static 'js/comum/dica.js' %}" defer></script>
 </head>
@@ -15,13 +17,14 @@
 
     <header class="topo">
         <div class="topo-conteudo">
-            <a class="topo-marca" href="{% url 'painel' %}">Agendamento de Monitoria</a>
+            <a class="topo-marca" href="{% url 'monitor_painel' %}">Agendamento de Monitoria <span class="topo-papel">Monitor</span></a>
             <nav class="topo-menu" aria-label="Principal">
-                <a href="{% url 'painel' %}" {% if request.resolver_match.url_name == 'painel' or request.resolver_match.url_name == 'monitor_detalhe' %}aria-current="page"{% endif %}>Monitores</a>
-                <a href="{% url 'minhas_solicitacoes' %}" {% if request.resolver_match.url_name == 'minhas_solicitacoes' %}aria-current="page"{% endif %}>Minhas solicitações</a>
+                <a href="{% url 'monitor_painel' %}" {% if request.resolver_match.url_name == 'monitor_painel' %}aria-current="page"{% endif %}>Atendimentos</a>
+                <a href="{% url 'monitor_horarios' %}" {% if request.resolver_match.url_name == 'monitor_horarios' %}aria-current="page"{% endif %}>Horários</a>
+                <a href="{% url 'monitor_disciplinas' %}" {% if request.resolver_match.url_name == 'monitor_disciplinas' %}aria-current="page"{% endif %}>Disciplinas</a>
             </nav>
             <div class="topo-usuario">
-                <span>{{ aluno.nome }}</span>
+                <span>{{ monitor.nome }}</span>
                 <form method="post" action="{% url 'sair' %}">
                     {% csrf_token %}
                     <button type="submit" class="botao-sair">Sair</button>

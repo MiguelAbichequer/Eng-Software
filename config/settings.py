@@ -43,9 +43,7 @@ INSTALLED_APPS = [
     'alunos', 
     'monitor',
     'inicio',
-    'interface_aluno',
     'administrador',
-    'interface_monitor',
 ]
 
 MIDDLEWARE = [

@@ -22,7 +22,5 @@ urlpatterns = [
     path('alunos/', include('alunos.urls')),
     path('', include('inicio.urls')),
     path('monitor/', include('monitor.urls')),
-    path('painel/', include('interface_aluno.urls')),
     path('administrador/', include('administrador.urls')),
-    path('painel-monitor/', include('interface_monitor.urls')),
 ]

@@ -131,7 +131,7 @@ class Solicitacao(models.Model):
     class Meta:
         #não há restrição de unicidade aqui: duas reservas não podem se sobrepor no mesmo
         #horário e data, mas isso é uma regra de intervalos (14:00-14:30 x 14:15-14:45),
-        #que o banco não confere sozinho. Quem garante é interface_aluno/reservas.py,
+        #que o banco não confere sozinho. Quem garante é alunos/reservas.py,
         #que trava o horário durante a reserva para dois alunos não pegarem o mesmo bloco.
         ordering = ['data', 'hora_inicio']
 

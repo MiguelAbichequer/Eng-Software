@@ -1,4 +1,4 @@
-{% extends 'interface_monitor/base.html' %}
+{% extends 'monitor/base.html' %}
 
 {% block titulo %}Atendimentos{% endblock %}
 
@@ -57,7 +57,7 @@
                     <h3>{{ dia.grouper|date:"l, d/m" }}</h3>
                     <ul class="solicitacoes">
                         {% for s in dia.list %}
-                            {% include 'interface_monitor/_atendimento.html' with acoes=True %}
+                            {% include 'monitor/_atendimento.html' with acoes=True %}
                         {% endfor %}
                     </ul>
                 </div>
@@ -88,7 +88,7 @@
                                 <span class="etiqueta">{{ s.get_participantes_display }}</span>
                             </span>
                         </div>
-                        <div>{% include 'interface_monitor/_denunciar.html' %}</div>
+                        <div>{% include 'monitor/_denunciar.html' %}</div>
                     </li>
                 {% endfor %}
             </ul>

@@ -44,3 +44,11 @@ O cliente considera essa funcionalidade necessária para resguardar a autonomia 
 ## Quarta pergunta: o agendamento deve ser imediato?
 
 O cliente considera importante que o aluno não fique esperando para ser atendido. Logo, sua requisição deve ser prontamente atendida. Se houver qualquer problema com o monitor, a ferramenta de remoção poderá remover o atendimento.
+
+## Terceira reunião com o cliente (12/11/2026):
+
+Na terceira reunião, o cliente avaliou o protótipo e pediu as seguintes mudanças:
+
+- Interface mais simples, com expansores;
+- Particionar os horários de 30 em 30 minutos;
+- Botão de status do monitor: em atendimento, disponível e indisponível.

@@ -1,4 +1,4 @@
-{% extends 'interface_aluno/base.html' %}
+{% extends 'alunos/base.html' %}
 
 {% block titulo %}Monitores{% endblock %}
 
@@ -58,7 +58,7 @@
                         </span>
 
                         <span class="monitor-situacao">
-                            {% include 'interface_aluno/_estado.html' with estado=r.estado %}
+                            {% include 'alunos/_estado.html' with estado=r.estado %}
 
                             <span class="situacao-detalhe">
                                 {% if r.proximo_bloco %}

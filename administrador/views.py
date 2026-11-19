@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from alunos.models import Aluno
-from interface_aluno.disponibilidade import agora_local
+from alunos.disponibilidade import agora_local
 from monitor.models import Monitor
 
 from . import relatorio, usuarios

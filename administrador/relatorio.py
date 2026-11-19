@@ -67,7 +67,7 @@ def solicitacoes_do_periodo(periodo, monitor_id=None):
 def ja_aconteceu(agora):
     """
     Filtro Q para "o atendimento já terminou": data passada, ou hoje com o horário encerrado.
-    Mesma regra de interface_aluno.disponibilidade.ja_terminou, mas escrita para o banco.
+    Mesma regra de alunos.disponibilidade.ja_terminou, mas escrita para o banco.
     """
     hoje = agora.date()
     return Q(data__lt=hoje) | Q(data=hoje, hora_fim__lte=agora.time())
